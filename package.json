@@ -1,0 +1,36 @@
+{
+  "name": "nftfy-v1-periphery",
+  "version": "1.0.0",
+  "description": "Nftfy V1 Periphery Smart Contracts",
+  "files": [
+    "/contracts/**/*.sol",
+    "/build/contracts/*.json"
+  ],
+  "dependencies": {},
+  "devDependencies": {
+    "@openzeppelin/contracts": "3.3.0",
+    "@truffle/hdwallet-provider": "^1.2.2",
+    "dotenv": "^8.2.0",
+    "ganache-cli": "^6.12.2",
+    "truffle": "^5.1.66",
+    "truffle-flattener": "^1.5.0"
+  },
+  "scripts": {
+    "build": "truffle compile",
+    "deploy": "truffle migrate",
+    "deploy:mainnet": "truffle migrate --network mainnet",
+    "deploy:kovan": "truffle migrate --network kovan",
+    "source": "truffle-flattener contracts/*.sol | sed '/^.*SPDX-License-Identifier:.*$/d' | sed '1s/^/\\/\\/ SPDX-License-Identifier: GPL-3.0-only\\n\\n/' > Contracts.sol",
+    "test": "truffle test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nftfy/nftfy-v1-periphery.git"
+  },
+  "author": "raugfer",
+  "license": "GPL-3.0-only",
+  "bugs": {
+    "url": "https://github.com/nftfy/nftfy-v1-periphery/issues"
+  },
+  "homepage": "https://github.com/nftfy/nftfy-v1-periphery#readme"
+}
