@@ -6,6 +6,13 @@ Peripheral smart contracts for interacting with Nftfy V1.
 
 ## Deployed Contracts
 
+Ethereum Mainnet:
+
+| Contract               | Network (ID) | Address                                                                                                               |
+| ---------------------- | ------------ | --------------------------------------------------------------------------------------------------------------------- |
+| CollectionFactory      | mainnet (1)  | [0x28dCF8fA0d6ba931D4c81e795D38e000280F2d25](https://etherscan.io/address/0x28dCF8fA0d6ba931D4c81e795D38e000280F2d25) |
+| NftfyDefaultCollection | mainnet (1)  | [0xa47feA71B0eFE7B4DAc86a70C6F4Fe9730cD1EB8](https://etherscan.io/address/0xa47feA71B0eFE7B4DAc86a70C6F4Fe9730cD1EB8) |
+
 Ethereum Rinkeby Testnet:
 
 | Contract         | Network (ID) | Address                                                                                                                       |
