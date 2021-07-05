@@ -12,7 +12,7 @@ contract Collection is Ownable, ERC721
 	constructor (string memory _name, string memory _symbol, address _to) ERC721(_name, _symbol) public
 	{
 		baseIndex = (_chainId() - 1) * 1_000_000_000_000 + 1;
-		_setBaseURI("ipfs://ipfs/");
+		_setBaseURI("ipfs://");
 		transferOwnership(_to);
 	}
 
