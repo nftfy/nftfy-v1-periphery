@@ -20,36 +20,39 @@ contract FixedPriceSale is ReentrancyGuard
 
 	mapping (address => SaleInfo) public saleInfo;
 
-	function create(address _token, address _owner, uint256 _amount, uint256 _cost, address _paymentToken, address _account) external nonReentrant
+	function create(address _token, uint256 _amount, uint256 _cost, address _paymentToken) external nonReentrant
 	{
+		address _from = msg.sender;
 		SaleInfo storage _sale = saleInfo[_token];
 		require(_sale.owner == address(0), "unavailable");
 		if (_amount > 0) {
-			IERC20(_token).safeTransferFrom(_account, address(this), _amount);
+			IERC20(_token).safeTransferFrom(_from, address(this), _amount);
 		}
-		_sale.owner = _owner;
+		_sale.owner = _from;
 		_sale.amount = _amount;
 		_sale.cost = _cost;
 		_sale.paymentToken = _paymentToken;
 	}
 
-	function adjust(address _token, uint256 _amount, uint256 _cost, address _account) external nonReentrant
+	function adjust(address _token, uint256 _amount, uint256 _cost) external nonReentrant
 	{
+		address _from = msg.sender;
 		SaleInfo storage _sale = saleInfo[_token];
-		require(msg.sender == _sale.owner, "access denied");
+		require(_from == _sale.owner, "access denied");
 		if (_amount > _sale.amount) {
-			IERC20(_token).safeTransferFrom(_account, address(this), _amount - _sale.amount);
+			IERC20(_token).safeTransferFrom(_from, address(this), _amount - _sale.amount);
 		}
 		else
 		if (_amount < _sale.amount) {
-			IERC20(_token).safeTransfer(_account, _sale.amount - _amount);
+			IERC20(_token).safeTransfer(_from, _sale.amount - _amount);
 		}
 		_sale.amount = _amount;
 		_sale.cost = _cost;
 	}
 
-	function purchase(address _token, uint256 _amount, address _from, address _to) external nonReentrant
+	function purchase(address _token, uint256 _amount, address _to) external nonReentrant
 	{
+		address _from = msg.sender;
 		SaleInfo storage _sale = saleInfo[_token];
 		require(_amount > 0, "invalid amount");
 		require(_amount <= _sale.amount, "insufficient balance");
