@@ -4,8 +4,9 @@ pragma solidity ^0.6.0;
 import { IERC1155 } from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import { IERC1155MetadataURI } from "@openzeppelin/contracts/token/ERC1155/IERC1155MetadataURI.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract ERC1155Wrapped is ERC721
+contract ERC1155Wrapped is ReentrancyGuard, ERC721
 {
 	struct Index {
 		address collection;
@@ -25,7 +26,7 @@ contract ERC1155Wrapped is ERC721
 	{
 	}
 
-	function deposit(address _collection, uint256 _id) external
+	function deposit(address _collection, uint256 _id) external nonReentrant
 	{
 		address _from = msg.sender;
 		IERC1155(_collection).safeTransferFrom(_from, address(this), _id, 1, new bytes(0));
@@ -39,7 +40,7 @@ contract ERC1155Wrapped is ERC721
 		});
 	}
 
-	function withdraw(uint256 _tokenId) external onlyOwner(_tokenId)
+	function withdraw(uint256 _tokenId) external onlyOwner(_tokenId) nonReentrant
 	{
 		address _from = msg.sender;
 		Index storage _index = indexes[_tokenId];
