@@ -77,8 +77,9 @@ contract Boxes is ReentrancyGuard, ERC721, ERC721Holder
 		return (_item.token, _item.tokenId);
 	}
 
-	function boxAddItem(uint256 _boxId, address _token, uint256 _tokenId, address _from) external onlyOwner(_boxId) nonReentrant
+	function boxAddItem(uint256 _boxId, address _token, uint256 _tokenId) external onlyOwner(_boxId) nonReentrant
 	{
+		address _from = msg.sender;
 		require(_token != address(this), "not allowed");
 		IERC721(_token).transferFrom(_from, address(this), _tokenId);
 		uint256 _i = items[_boxId].length;
