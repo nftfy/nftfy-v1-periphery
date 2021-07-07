@@ -4,6 +4,7 @@ pragma solidity ^0.6.0;
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { ERC721Holder } from "@openzeppelin/contracts/token/ERC721/ERC721Holder.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 library SafeERC721
 {
@@ -15,7 +16,7 @@ library SafeERC721
 	}
 }
 
-contract Boxes is ERC721, ERC721Holder
+contract Boxes is ReentrancyGuard, ERC721, ERC721Holder
 {
 	using SafeERC721 for IERC721;
 
@@ -76,7 +77,7 @@ contract Boxes is ERC721, ERC721Holder
 		return (_item.token, _item.tokenId);
 	}
 
-	function boxAddItem(uint256 _boxId, address _token, uint256 _tokenId, address _from) external onlyOwner(_boxId)
+	function boxAddItem(uint256 _boxId, address _token, uint256 _tokenId, address _from) external onlyOwner(_boxId) nonReentrant
 	{
 		require(_token != address(this), "not allowed");
 		IERC721(_token).transferFrom(_from, address(this), _tokenId);
@@ -92,7 +93,7 @@ contract Boxes is ERC721, ERC721Holder
 		emit BoxAddItem(_boxId, _token, _tokenId);
 	}
 
-	function boxRemoveItem(uint256 _boxId, address _token, uint256 _tokenId, address _to) external onlyOwner(_boxId)
+	function boxRemoveItem(uint256 _boxId, address _token, uint256 _tokenId, address _to) external onlyOwner(_boxId) nonReentrant
 	{
 		Index storage _index = indexes[_token][_tokenId];
 		require(_boxId == _index.boxId, "not in box");
@@ -109,7 +110,7 @@ contract Boxes is ERC721, ERC721Holder
 		emit BoxRemoveItem(_boxId, _token, _tokenId);
 	}
 
-	function recoverItem(address _token, uint256 _tokenId, address _to) external
+	function recoverItem(address _token, uint256 _tokenId, address _to) external nonReentrant
 	{
 		Index storage _index = indexes[_token][_tokenId];
 		require(_index.boxId == 0, "access denied");
