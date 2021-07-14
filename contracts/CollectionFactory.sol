@@ -7,18 +7,22 @@ import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
 
 contract Collection is Ownable, ERC721
 {
+	uint256 constant MINT_LIMIT = 1_000_000_000_000;
+
 	uint256 public immutable baseIndex;
 
 	constructor (string memory _name, string memory _symbol, address _to) ERC721(_name, _symbol) public
 	{
-		baseIndex = (_chainId() - 1) * 1_000_000_000_000 + 1;
+		baseIndex = (_chainId() - 1) * MINT_LIMIT + 1;
 		_setBaseURI("ipfs://");
 		transferOwnership(_to);
 	}
 
 	function mint(string memory _cid, address _to) external onlyOwner
 	{
-		uint256 _tokenId = baseIndex + totalSupply();
+		uint256 _supply = totalSupply();
+		require(_supply < MINT_LIMIT, "limit exhausted");
+		uint256 _tokenId = baseIndex + _supply;
 		_safeMint(_to, _tokenId);
 		_setTokenURI(_tokenId, _cid);
 	}
