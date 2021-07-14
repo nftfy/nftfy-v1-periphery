@@ -20,10 +20,7 @@ contract Boxes is ReentrancyGuard, ERC721, ERC721Holder
 {
 	using SafeERC721 for IERC721;
 
-	string constant URI_PREFIX = "data:application/json;charset=utf-8,%7B%22image%22%3A%22data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8%2BCjxzdmcgeG1sbnM6ZGM9Imh0dHA6Ly9wdXJsLm9yZy9kYy9lbGVtZW50cy8xLjEvIiB4bWxuczpjYz0iaHR0cDovL2NyZWF0aXZlY29tbW9ucy5vcmcvbnMjIiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiIHhtbG5zOnN2Zz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgdmVyc2lvbj0iMS4xIiB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDE4MCAxODAiPgo8cGF0aCBzdHlsZT0iZmlsbDojYjdiN2I3IiBkPSJNIDkwLDM1IDE1MCw2NSA5MCw5NSAzMCw2NSBaIi8%2BCjxwYXRoIHN0eWxlPSJmaWxsOiM4ZThkOGQiIGQ9Ik0gMTUwLDEyNSA5MCwxNTUgOTAsOTUgMTUwLDY1IFoiLz4KPHBhdGggc3R5bGU9ImZpbGw6IzcwNzA3MCIgZD0iTSAzMCwxMjUgOTAsMTU1IDkwLDk1IDMwLDY1IFoiLz4KPHBhdGggc3R5bGU9ImZpbGw6IzcwNzA3MCIgZD0iTSA1Miw1NCA2OCw0NiAxMjgsNzYgMTEyLDg0IFoiLz4KPHBhdGggc3R5bGU9ImZpbGw6IzcwNzA3MCIgZD0iTSAxMjgsNzYgMTEyLDg0IDExMiw5NCAxMjgsODYgWiIvPgo8L3N2Zz4K%22%2C%22description%22%3A%22This%20box%20is%20an%20NFT%20container.%22%2C%22name%22%3A%22Box%20%23";
-	string constant URI_SUFFIX_PART_1 = "%22%2C%22external_url%22%3A%22https%3A%2F%2Fnftfy.org%2F";
-	string constant URI_SUFFIX_PART_2 = "%2Fbox%2F";
-	string constant URI_SUFFIX_PART_3 = "%22%7D";
+	uint256 constant MINT_LIMIT = 1_000_000_000_000;
 
 	struct Item {
 		address token;
@@ -35,7 +32,8 @@ contract Boxes is ReentrancyGuard, ERC721, ERC721Holder
 		uint256 i;
 	}
 
-	string private network;
+	uint256 public immutable baseIndex;
+
 	mapping (uint256 => Item[]) private items;
 	mapping (address => mapping (uint256 => Index)) private indexes;
 
@@ -45,19 +43,25 @@ contract Boxes is ReentrancyGuard, ERC721, ERC721Holder
 		_;
 	}
 
-	constructor (string memory _network) ERC721("Boxes", "BOX") public
+	constructor () ERC721("Boxes", "BOX") public
 	{
-		network = _network;
-		_setBaseURI(URI_PREFIX);
+		baseIndex = (_chainId() - 1) * MINT_LIMIT + 1;
+		_setBaseURI("ipfs://");
 	}
 
-	function mint(address _to) external
+	function _chainId() internal pure returns (uint256 _chainid)
 	{
-		uint256 _boxId = totalSupply() + 1;
-		string memory _id = _boxId.toString();
-		string memory _boxURI = string(abi.encodePacked(_id, URI_SUFFIX_PART_1, network, URI_SUFFIX_PART_2, _id, URI_SUFFIX_PART_3));
+		assembly { _chainid := chainid() }
+		return _chainid;
+	}
+
+	function mint(string memory _cid, address _to) external
+	{
+		uint256 _supply = totalSupply();
+		require(_supply < MINT_LIMIT, "limit exhausted");
+		uint256 _boxId = baseIndex + _supply;
 		_safeMint(_to, _boxId);
-		_setTokenURI(_boxId, _boxURI);
+		_setTokenURI(_boxId, _cid);
 	}
 
 	function boxOf(address _token, uint256 _tokenId) external view returns (uint256 _boxId, uint256 _i)
@@ -97,7 +101,7 @@ contract Boxes is ReentrancyGuard, ERC721, ERC721Holder
 	function boxRemoveItem(uint256 _boxId, address _token, uint256 _tokenId, address _to) external onlyOwner(_boxId) nonReentrant
 	{
 		Index storage _index = indexes[_token][_tokenId];
-		require(_boxId == _index.boxId, "not in box");
+		require(_boxId == _index.boxId, "not found");
 		uint256 _i = _index.i;
 		_index.boxId = 0;
 		_index.i = 0;
