@@ -13,6 +13,7 @@ Ethereum Mainnet:
 | CollectionFactory (Obsolete) | mainnet (1)  | [0x28dCF8fA0d6ba931D4c81e795D38e000280F2d25](https://etherscan.io/address/0x28dCF8fA0d6ba931D4c81e795D38e000280F2d25) |
 | NftfyCollection (Obsolete)   | mainnet (1)  | [0xa47feA71B0eFE7B4DAc86a70C6F4Fe9730cD1EB8](https://etherscan.io/address/0xa47feA71B0eFE7B4DAc86a70C6F4Fe9730cD1EB8) |
 | CollectionFactory            | mainnet (1)  | [0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F](https://etherscan.io/address/0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F) |
+| NftfyCollection              | mainnet (1)  | [0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb](https://etherscan.io/address/0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb) |
 
 Ethereum Rinkeby Testnet:
 
@@ -20,7 +21,7 @@ Ethereum Rinkeby Testnet:
 | ----------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------- |
 | Boxes             | rinkeby (4)  | [0x27DABaDFB488c2CB47a9CdC2fdE8C6A9f2d3f02e](https://rinkeby.etherscan.io/address/0x27DABaDFB488c2CB47a9CdC2fdE8C6A9f2d3f02e) |
 | CollectionFactory | rinkeby (4)  | [0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F](https://rinkeby.etherscan.io/address/0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F) |
-| NftfyCollection   | rinkeby (4)  | [0x678091D19749D6C810b506260a7Bc0d9196656D5](https://rinkeby.etherscan.io/address/0x678091D19749D6C810b506260a7Bc0d9196656D5) |
+| NftfyCollection   | rinkeby (4)  | [0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb](https://rinkeby.etherscan.io/address/0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb) |
 | TestTokenFactory  | rinkeby (4)  | [0x4A4210BfD926174B96FfC39085461B7d8DaB2fBA](https://rinkeby.etherscan.io/address/0x4A4210BfD926174B96FfC39085461B7d8DaB2fBA) |
 
 Ethereum Kovan Testnet:
@@ -29,5 +30,5 @@ Ethereum Kovan Testnet:
 | ----------------- | ------------ | --------------------------------------------------------------------------------------------------------------------------- |
 | Boxes             | kovan (42)   | [0x27DABaDFB488c2CB47a9CdC2fdE8C6A9f2d3f02e](https://kovan.etherscan.io/address/0x27DABaDFB488c2CB47a9CdC2fdE8C6A9f2d3f02e) |
 | CollectionFactory | kovan (42)   | [0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F](https://kovan.etherscan.io/address/0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F) |
-| NftfyCollection   | kovan (42)   | [0x678091D19749D6C810b506260a7Bc0d9196656D5](https://kovan.etherscan.io/address/0x678091D19749D6C810b506260a7Bc0d9196656D5) |
+| NftfyCollection   | kovan (42)   | [0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb](https://kovan.etherscan.io/address/0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb) |
 | TestTokenFactory  | kovan (42)   | [0x4A4210BfD926174B96FfC39085461B7d8DaB2fBA](https://kovan.etherscan.io/address/0x4A4210BfD926174B96FfC39085461B7d8DaB2fBA) |
