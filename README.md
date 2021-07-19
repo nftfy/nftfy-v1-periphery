@@ -12,6 +12,7 @@ Ethereum Mainnet:
 | ---------------------------- | ------------ | --------------------------------------------------------------------------------------------------------------------- |
 | CollectionFactory (Obsolete) | mainnet (1)  | [0x28dCF8fA0d6ba931D4c81e795D38e000280F2d25](https://etherscan.io/address/0x28dCF8fA0d6ba931D4c81e795D38e000280F2d25) |
 | NftfyCollection (Obsolete)   | mainnet (1)  | [0xa47feA71B0eFE7B4DAc86a70C6F4Fe9730cD1EB8](https://etherscan.io/address/0xa47feA71B0eFE7B4DAc86a70C6F4Fe9730cD1EB8) |
+| CollectionFactory            | mainnet (1)  | [0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F](https://etherscan.io/address/0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F) |
 
 Ethereum Rinkeby Testnet:
 
