@@ -2,9 +2,9 @@
 
 source .env
 
-CHAIN_ID=4002
-GAS_LIMIT=281474976710655
-FORK_URL='https://rpc.testnet.fantom.network/'
+CHAIN_ID=137
+GAS_LIMIT=20000000
+FORK_URL='https://polygon-mainnet.infura.io/v3/'$INFURA_PROJECT_ID
 
 BALANCE=100000000000000000000000
 

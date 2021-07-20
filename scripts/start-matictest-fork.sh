@@ -2,9 +2,9 @@
 
 source .env
 
-CHAIN_ID=250
-GAS_LIMIT=281474976710655
-FORK_URL='https://rpcapi.fantom.network/'
+CHAIN_ID=80001
+GAS_LIMIT=20000000
+FORK_URL='https://polygon-mumbai.infura.io/v3/'$INFURA_PROJECT_ID
 
 BALANCE=100000000000000000000000
 

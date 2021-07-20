@@ -3,7 +3,7 @@
 source .env
 
 CHAIN_ID=97
-GAS_LIMIT=30000000
+GAS_LIMIT=60000000
 FORK_URL='https://data-seed-prebsc-1-s1.binance.org:8545/'
 
 BALANCE=100000000000000000000000

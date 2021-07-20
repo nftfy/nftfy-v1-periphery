@@ -3,7 +3,7 @@
 source .env
 
 CHAIN_ID=56
-GAS_LIMIT=30000000
+GAS_LIMIT=60000000
 FORK_URL='https://bsc-dataseed.binance.org/'
 
 BALANCE=100000000000000000000000

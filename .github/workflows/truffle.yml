@@ -26,4 +26,11 @@ jobs:
         PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
         INFURA_PROJECT_ID: ${{ secrets.INFURA_PROJECT_ID }}
     - run: ./scripts/start-mainnet-fork.sh & rm -rf ./build/ && npm run test && pkill node
+    - run: ./scripts/start-ropsten-fork.sh & rm -rf ./build/ && npm run test && pkill node
+    - run: ./scripts/start-rinkeby-fork.sh & rm -rf ./build/ && npm run test && pkill node
     - run: ./scripts/start-kovan-fork.sh & rm -rf ./build/ && npm run test && pkill node
+    - run: ./scripts/start-goerli-fork.sh & rm -rf ./build/ && npm run test && pkill node
+    - run: ./scripts/start-bscmain-fork.sh & rm -rf ./build/ && npm run test && pkill node
+    - run: ./scripts/start-bsctest-fork.sh & rm -rf ./build/ && npm run test && pkill node
+    - run: ./scripts/start-maticmain-fork.sh & rm -rf ./build/ && npm run test && pkill node
+    - run: ./scripts/start-matictest-fork.sh & rm -rf ./build/ && npm run test && pkill node
