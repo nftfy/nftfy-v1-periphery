@@ -46,3 +46,17 @@ Binance Smart Chain Testnet:
 | ----------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------- |
 | CollectionFactory | bscmain (56) | [0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F](https://testnet.bscscan.com/address/0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F) |
 | NftfyCollection   | bscmain (56) | [0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb](https://testnet.bscscan.com/address/0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb) |
+
+Polygon Matic:
+
+| Contract          | Network (ID)    | Address                                                                                                                  |
+| ----------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| CollectionFactory | maticmain (137) | [0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F](https://polygonscan.com/address/0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F) |
+| NftfyCollection   | maticmain (137) | [0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb](https://polygonscan.com/address/0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb) |
+
+Polygon Matic Testnet:
+
+| Contract          | Network (ID)      | Address                                                                                                                         |
+| ----------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| CollectionFactory | matictest (80001) | [0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F](https://mumbai.polygonscan.com/address/0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F) |
+| NftfyCollection   | matictest (80001) | [0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb](https://mumbai.polygonscan.com/address/0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb) |
