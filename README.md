@@ -32,3 +32,17 @@ Ethereum Kovan Testnet:
 | CollectionFactory | kovan (42)   | [0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F](https://kovan.etherscan.io/address/0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F) |
 | NftfyCollection   | kovan (42)   | [0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb](https://kovan.etherscan.io/address/0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb) |
 | TestTokenFactory  | kovan (42)   | [0x4A4210BfD926174B96FfC39085461B7d8DaB2fBA](https://kovan.etherscan.io/address/0x4A4210BfD926174B96FfC39085461B7d8DaB2fBA) |
+
+Binance Smart Chain:
+
+| Contract          | Network (ID) | Address                                                                                                              |
+| ----------------- | ------------ | -------------------------------------------------------------------------------------------------------------------- |
+| CollectionFactory | bscmain (56) | [0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F](https://bscscan.com/address/0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F) |
+| NftfyCollection   | bscmain (56) | [0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb](https://bscscan.com/address/0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb) |
+
+Binance Smart Chain Testnet:
+
+| Contract          | Network (ID) | Address                                                                                                                      |
+| ----------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| CollectionFactory | bscmain (56) | [0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F](https://testnet.bscscan.com/address/0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F) |
+| NftfyCollection   | bscmain (56) | [0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb](https://testnet.bscscan.com/address/0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb) |
