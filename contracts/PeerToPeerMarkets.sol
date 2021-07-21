@@ -12,6 +12,7 @@ contract PeerToPeerMarkets is ReentrancyGuard
 	using SafeERC20 for IERC20;
 
 	struct IndexInfo {
+		bool exists;
 		address bookToken;
 		address execToken;
 		uint256 i;
@@ -44,13 +45,14 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		address payable _from = msg.sender;
 		uint256 _value = msg.value;
 		IndexInfo storage _index = indexes[_orderId];
-		require(orders[_index.bookToken][_index.execToken][_index.i].orderId == bytes32(0), "duplicate order");
+		require(!_index.exists, "duplicate order");
 		OrderInfo[] storage _orders = orders[_bookToken][_execToken];
 		uint256 _i = _orders.length;
 		if (_bookAmount > 0) {
 			_safeTransferFrom(_bookToken, _from, _value, address(this), _bookAmount);
 			balances[_bookToken] += _bookAmount;
 		}
+		_index.exists = true;
 		_index.bookToken = _bookToken;
 		_index.execToken = _execToken;
 		_index.i = _i;
@@ -68,14 +70,15 @@ contract PeerToPeerMarkets is ReentrancyGuard
 	{
 		address payable _from = msg.sender;
 		IndexInfo storage _index = indexes[_orderId];
+		require(_index.exists, "unknown order");
 		address _bookToken = _index.bookToken;
 		address _execToken = _index.execToken;
 		uint256 _i = _index.i;
 		OrderInfo[] storage _orders = orders[_bookToken][_execToken];
 		OrderInfo storage _order = _orders[_i];
-		require(_order.orderId == _orderId, "unknown order");
 		require(_order.owner == _from, "access denied");
 		uint256 _bookAmount = _order.bookAmount;
+		_index.exists = false;
 		_index.bookToken = address(0);
 		_index.execToken = address(0);
 		_index.i = 0;
@@ -97,12 +100,12 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		address payable _from = msg.sender;
 		uint256 _value = msg.value;
 		IndexInfo storage _index = indexes[_orderId];
+		require(_index.exists, "unknown order");
 		address _bookToken = _index.bookToken;
 		address _execToken = _index.execToken;
 		uint256 _i = _index.i;
 		OrderInfo[] storage _orders = orders[_bookToken][_execToken];
 		OrderInfo storage _order = _orders[_i];
-		require(_order.orderId == _orderId, "unknown order");
 		require(_order.owner == _from, "access denied");
 		if (_bookAmount > _order.bookAmount) {
 			uint256 _difference = _bookAmount - _order.bookAmount;
@@ -130,12 +133,12 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		address payable _from = msg.sender;
 		uint256 _value = msg.value;
 		IndexInfo storage _index = indexes[_orderId];
+		require(_index.exists, "unknown order");
 		address _bookToken = _index.bookToken;
 		address _execToken = _index.execToken;
 		uint256 _i = _index.i;
 		OrderInfo[] storage _orders = orders[_bookToken][_execToken];
 		OrderInfo storage _order = _orders[_i];
-		require(_order.orderId == _orderId, "unknown order");
 		require(_bookAmount <= _order.bookAmount, "insufficient amount");
 		if (_order.bookAmount == 0) {
 			require(_execAmount <= _order.execAmount, "excessive amount");
