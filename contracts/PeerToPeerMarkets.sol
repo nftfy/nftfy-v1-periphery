@@ -34,6 +34,11 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		return _orders.length;
 	}
 
+	function generateOrderId(address _owner, uint256 _nonce) external pure returns (bytes32 _orderId)
+	{
+		return keccak256(abi.encode(_owner, _nonce));
+	}
+
 	function createOrder(address _bookToken, address _execToken, bytes32 _orderId, uint256 _bookAmount, uint256 _execAmount) external nonReentrant
 	{
 		address _from = msg.sender;
@@ -42,7 +47,7 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		OrderInfo[] storage _orders = orders[_bookToken][_execToken];
 		uint256 _i = _orders.length;
 		IERC20(_bookToken).safeTransferFrom(_from, address(this), _bookAmount);
-		balances[_bookToken] = balances[_bookToken].add(_bookAmount);
+		balances[_bookToken] += _bookAmount;
 		_index.bookToken = _bookToken;
 		_index.execToken = _execToken;
 		_index.i = _i;
@@ -52,7 +57,8 @@ contract PeerToPeerMarkets is ReentrancyGuard
 			bookAmount: _bookAmount,
 			execAmount: _execAmount
 		}));
-		emit CreateOrder(_bookToken, _execToken, _orderId, _bookAmount, _execAmount);
+		emit CreateOrder(_bookToken, _execToken, _orderId);
+		emit UpdateOrder(_bookToken, _execToken, _orderId, _bookAmount, _execAmount);
 	}
 
 	function cancelOrder(bytes32 _orderId) external nonReentrant
@@ -77,7 +83,7 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		}
 		_orders.pop();
 		if (_bookAmount > 0) {
-			balances[_bookToken] = balances[_bookToken].sub(_bookAmount);
+			balances[_bookToken] -= _bookAmount;
 			IERC20(_bookToken).safeTransfer(_from, _bookAmount);
 		}
 		emit CancelOrder(_bookToken, _execToken, _orderId);
@@ -97,7 +103,7 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		if (_bookAmount > _order.bookAmount) {
 			uint256 _diffAmount = _bookAmount - _order.bookAmount;
 			IERC20(_bookToken).safeTransferFrom(_from, address(this), _diffAmount);
-			balances[_bookToken] = balances[_bookToken].add(_diffAmount);
+			balances[_bookToken] += _diffAmount;
 			_order.bookAmount = _bookAmount;
 			_order.execAmount = _execAmount;
 		}
@@ -106,13 +112,13 @@ contract PeerToPeerMarkets is ReentrancyGuard
 			uint256 _diffAmount = _order.bookAmount - _bookAmount;
 			_order.bookAmount = _bookAmount;
 			_order.execAmount = _execAmount;
-			balances[_bookToken] = balances[_bookToken].sub(_diffAmount);
+			balances[_bookToken] -= _diffAmount;
 			IERC20(_bookToken).safeTransfer(_from, _diffAmount);
 		}
 		else {
 			_order.execAmount = _execAmount;
 		}
-		emit ChangeOrder(_bookToken, _execToken, _orderId, _bookAmount, _execAmount);
+		emit UpdateOrder(_bookToken, _execToken, _orderId, _bookAmount, _execAmount);
 	}
 
 	function executeOrderBook(bytes32 _orderId, uint256 _bookAmount, uint256 _maxExecAmount) external nonReentrant
@@ -128,12 +134,12 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		uint256 _execAmount = _bookAmount.mul(_order.execAmount) / _order.bookAmount;
 		require(_bookAmount <= _order.bookAmount, "insufficient amount");
 		require(_execAmount <= _maxExecAmount, "high slippage");
-		_order.bookAmount = _order.bookAmount.sub(_bookAmount);
-		_order.execAmount = _order.execAmount.sub(_execAmount);
-		balances[_bookToken] = balances[_bookToken].sub(_bookAmount);
+		_order.bookAmount -= _bookAmount;
+		_order.execAmount -= _execAmount;
+		balances[_bookToken] -= _bookAmount;
 		IERC20(_bookToken).safeTransfer(_from, _bookAmount);
 		IERC20(_execToken).safeTransferFrom(_from, _order.owner, _execAmount);
-		emit ChangeOrder(_bookToken, _execToken, _orderId, _bookAmount, _execAmount);
+		emit UpdateOrder(_bookToken, _execToken, _orderId, _bookAmount, _execAmount);
 	}
 
 	function executeOrderExec(bytes32 _orderId, uint256 _execAmount, uint256 _minBookAmount) external nonReentrant
@@ -149,12 +155,12 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		uint256 _bookAmount = _execAmount.mul(_order.bookAmount) / _order.execAmount;
 		require(_bookAmount <= _order.bookAmount, "insufficient amount");
 		require(_bookAmount >= _minBookAmount, "high slippage");
-		_order.bookAmount = _order.bookAmount.sub(_bookAmount);
-		_order.execAmount = _order.execAmount.sub(_execAmount);
-		balances[_bookToken] = balances[_bookToken].sub(_bookAmount);
+		_order.bookAmount -= _bookAmount;
+		_order.execAmount -= _execAmount;
+		balances[_bookToken] -= _bookAmount;
 		IERC20(_bookToken).safeTransfer(_from, _bookAmount);
 		IERC20(_execToken).safeTransferFrom(_from, _order.owner, _execAmount);
-		emit ChangeOrder(_bookToken, _execToken, _orderId, _bookAmount, _execAmount);
+		emit UpdateOrder(_bookToken, _execToken, _orderId, _bookAmount, _execAmount);
 	}
 
 	function recoverLostFunds(address _token, address _to) external nonReentrant
@@ -164,7 +170,7 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		IERC20(_token).safeTransfer(_to, _current - _balance);
 	}
 
-	event CreateOrder(address indexed _bookToken, address indexed _execToken, bytes32 indexed _orderId, uint256 _bookAmount, uint256 _execAmount);
-	event ChangeOrder(address indexed _bookToken, address indexed _execToken, bytes32 indexed _orderId, uint256 _bookAmount, uint256 _execAmount);
+	event CreateOrder(address indexed _bookToken, address indexed _execToken, bytes32 indexed _orderId);
 	event CancelOrder(address indexed _bookToken, address indexed _execToken, bytes32 indexed _orderId);
+	event UpdateOrder(address indexed _bookToken, address indexed _execToken, bytes32 indexed _orderId, uint256 _bookAmount, uint256 _execAmount);
 }
