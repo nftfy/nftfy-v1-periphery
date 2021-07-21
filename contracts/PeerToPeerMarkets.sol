@@ -46,8 +46,10 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		require(_index.bookToken == address(0), "duplicate order");
 		OrderInfo[] storage _orders = orders[_bookToken][_execToken];
 		uint256 _i = _orders.length;
-		IERC20(_bookToken).safeTransferFrom(_from, address(this), _bookAmount);
-		balances[_bookToken] += _bookAmount;
+		if (_bookAmount > 0) {
+			IERC20(_bookToken).safeTransferFrom(_from, address(this), _bookAmount);
+			balances[_bookToken] += _bookAmount;
+		}
 		_index.bookToken = _bookToken;
 		_index.execToken = _execToken;
 		_index.i = _i;
@@ -121,7 +123,7 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		emit UpdateOrder(_bookToken, _execToken, _orderId, _bookAmount, _execAmount);
 	}
 
-	function executeOrderBook(bytes32 _orderId, uint256 _bookAmount, uint256 _maxExecAmount) external nonReentrant
+	function executeOrder(bytes32 _orderId, uint256 _bookAmount, uint256 _execAmount) external nonReentrant
 	{
 		address _from = msg.sender;
 		IndexInfo storage _index = indexes[_orderId];
@@ -131,36 +133,23 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		require(_bookToken != address(0), "unknown order");
 		OrderInfo[] storage _orders = orders[_bookToken][_execToken];
 		OrderInfo storage _order = _orders[_i];
-		uint256 _execAmount = _bookAmount.mul(_order.execAmount) / _order.bookAmount;
 		require(_bookAmount <= _order.bookAmount, "insufficient amount");
-		require(_execAmount <= _maxExecAmount, "high slippage");
+		if (_order.bookAmount == 0) {
+			require(_execAmount <= _order.execAmount, "excessive amount");
+		} else {
+			require(_execAmount == _bookAmount.mul(_order.execAmount) / _order.bookAmount, "price mismatch");
+		}
 		_order.bookAmount -= _bookAmount;
 		_order.execAmount -= _execAmount;
-		balances[_bookToken] -= _bookAmount;
-		IERC20(_bookToken).safeTransfer(_from, _bookAmount);
-		IERC20(_execToken).safeTransferFrom(_from, _order.owner, _execAmount);
-		emit UpdateOrder(_bookToken, _execToken, _orderId, _bookAmount, _execAmount);
-	}
-
-	function executeOrderExec(bytes32 _orderId, uint256 _execAmount, uint256 _minBookAmount) external nonReentrant
-	{
-		address _from = msg.sender;
-		IndexInfo storage _index = indexes[_orderId];
-		address _bookToken = _index.bookToken;
-		address _execToken = _index.execToken;
-		uint256 _i = _index.i;
-		require(_bookToken != address(0), "unknown order");
-		OrderInfo[] storage _orders = orders[_bookToken][_execToken];
-		OrderInfo storage _order = _orders[_i];
-		uint256 _bookAmount = _execAmount.mul(_order.bookAmount) / _order.execAmount;
-		require(_bookAmount <= _order.bookAmount, "insufficient amount");
-		require(_bookAmount >= _minBookAmount, "high slippage");
-		_order.bookAmount -= _bookAmount;
-		_order.execAmount -= _execAmount;
-		balances[_bookToken] -= _bookAmount;
-		IERC20(_bookToken).safeTransfer(_from, _bookAmount);
-		IERC20(_execToken).safeTransferFrom(_from, _order.owner, _execAmount);
-		emit UpdateOrder(_bookToken, _execToken, _orderId, _bookAmount, _execAmount);
+		if (_bookAmount > 0) {
+			balances[_bookToken] -= _bookAmount;
+			IERC20(_bookToken).safeTransfer(_from, _bookAmount);
+		}
+		if (_execAmount > 0) {
+			IERC20(_execToken).safeTransferFrom(_from, _order.owner, _execAmount);
+		}
+		emit Trade(_bookToken, _execToken, _bookAmount, _execAmount);
+		emit UpdateOrder(_bookToken, _execToken, _orderId, _order.bookAmount, _order.execAmount);
 	}
 
 	function recoverLostFunds(address _token, address _to) external nonReentrant
@@ -173,4 +162,5 @@ contract PeerToPeerMarkets is ReentrancyGuard
 	event CreateOrder(address indexed _bookToken, address indexed _execToken, bytes32 indexed _orderId);
 	event CancelOrder(address indexed _bookToken, address indexed _execToken, bytes32 indexed _orderId);
 	event UpdateOrder(address indexed _bookToken, address indexed _execToken, bytes32 indexed _orderId, uint256 _bookAmount, uint256 _execAmount);
+	event Trade(address indexed _bookToken, address indexed _execToken, uint256 _bookAmount, uint256 _execAmount);
 }
