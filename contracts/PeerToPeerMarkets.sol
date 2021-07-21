@@ -11,135 +11,150 @@ contract PeerToPeerMarkets is ReentrancyGuard
 	using SafeMath for uint256;
 	using SafeERC20 for IERC20;
 
+	struct IndexInfo {
+		address bookToken;
+		address execToken;
+		uint256 i;
+	}
+
 	struct OrderInfo {
 		address owner;
 		bytes32 orderId;
-		uint256 giveAmount;
-		uint256 takeAmount;
+		uint256 bookAmount;
+		uint256 execAmount;
 	}
 
-	mapping (bytes32 => uint256) private indexes;
-	mapping (address => uint256) private balances;
-
+	mapping (address => uint256) public balances;
+	mapping (bytes32 => IndexInfo) public indexes;
 	mapping (address => mapping (address => OrderInfo[])) public orders;
 
-	function orderCount(address _giveToken, address _takeToken) external view returns (uint256 _count)
+	function orderCount(address _bookToken, address _execToken) external view returns (uint256 _count)
 	{
-		OrderInfo[] storage _orders = orders[_giveToken][_takeToken];
+		OrderInfo[] storage _orders = orders[_bookToken][_execToken];
 		return _orders.length;
 	}
 
-	function createOrder(address _giveToken, address _takeToken, bytes32 _orderId, uint256 _giveAmount, uint256 _takeAmount) external nonReentrant
+	function createOrder(address _bookToken, address _execToken, bytes32 _orderId, uint256 _bookAmount, uint256 _execAmount) external nonReentrant
 	{
 		address _from = msg.sender;
-		require(indexes[_orderId] == 0, "duplicate order");
-		OrderInfo[] storage _orders = orders[_giveToken][_takeToken];
+		IndexInfo storage _index = indexes[_orderId];
+		require(_index.bookToken == address(0), "duplicate order");
+		OrderInfo[] storage _orders = orders[_bookToken][_execToken];
 		uint256 _i = _orders.length;
-		IERC20(_giveToken).safeTransferFrom(_from, address(this), _giveAmount);
-		balances[_giveToken] = balances[_giveToken].add(_giveAmount);
+		IERC20(_bookToken).safeTransferFrom(_from, address(this), _bookAmount);
+		balances[_bookToken] = balances[_bookToken].add(_bookAmount);
+		_index.bookToken = _bookToken;
+		_index.execToken = _execToken;
+		_index.i = _i;
 		_orders.push(OrderInfo({
 			owner: _from,
 			orderId: _orderId,
-			giveAmount: _giveAmount,
-			takeAmount: _takeAmount
+			bookAmount: _bookAmount,
+			execAmount: _execAmount
 		}));
-		indexes[_orderId] = _i + 1;
-		emit CreateOrder(_giveToken, _takeToken, _orderId);
+		emit CreateOrder(_bookToken, _execToken, _orderId, _bookAmount, _execAmount);
 	}
 
-	function cancelOrder(address _giveToken, address _takeToken, bytes32 _orderId) external nonReentrant
+	function cancelOrder(bytes32 _orderId) external nonReentrant
 	{
 		address _from = msg.sender;
-		uint256 _i = indexes[_orderId];
-		require(_i > 0, "unknown order");
-		_i--;
-		OrderInfo[] storage _orders = orders[_giveToken][_takeToken];
+		IndexInfo storage _index = indexes[_orderId];
+		address _bookToken = _index.bookToken;
+		address _execToken = _index.execToken;
+		uint256 _i = _index.i;
+		require(_bookToken != address(0), "unknown order");
+		OrderInfo[] storage _orders = orders[_bookToken][_execToken];
 		OrderInfo storage _order = _orders[_i];
-		require(_order.orderId == _orderId, "unknown order");
 		require(_order.owner == _from, "access denied");
-		uint256 _giveAmount = _order.giveAmount;
-		indexes[_orderId] = 0;
+		uint256 _bookAmount = _order.bookAmount;
+		_index.bookToken = address(0);
+		_index.execToken = address(0);
+		_index.i = 0;
 		uint256 _j = _orders.length - 1;
 		if (_i < _j) {
-			indexes[_orders[_j].orderId] = _i;
+			indexes[_orders[_j].orderId].i = _i;
 			_orders[_i] = _orders[_j];
 		}
 		_orders.pop();
-		balances[_giveToken] = balances[_giveToken].sub(_giveAmount);
-		IERC20(_giveToken).safeTransfer(_from, _giveAmount);
-		emit CancelOrder(_giveToken, _takeToken, _orderId);
+		if (_bookAmount > 0) {
+			balances[_bookToken] = balances[_bookToken].sub(_bookAmount);
+			IERC20(_bookToken).safeTransfer(_from, _bookAmount);
+		}
+		emit CancelOrder(_bookToken, _execToken, _orderId);
 	}
 
-	function updateOrder(address _giveToken, address _takeToken, bytes32 _orderId, uint256 _giveAmount, uint256 _takeAmount) external nonReentrant
+	function updateOrder(bytes32 _orderId, uint256 _bookAmount, uint256 _execAmount) external nonReentrant
 	{
 		address _from = msg.sender;
-		uint256 _i = indexes[_orderId];
-		require(_i > 0, "unknown order");
-		_i--;
-		OrderInfo[] storage _orders = orders[_giveToken][_takeToken];
+		IndexInfo storage _index = indexes[_orderId];
+		address _bookToken = _index.bookToken;
+		address _execToken = _index.execToken;
+		uint256 _i = _index.i;
+		require(_bookToken != address(0), "unknown order");
+		OrderInfo[] storage _orders = orders[_bookToken][_execToken];
 		OrderInfo storage _order = _orders[_i];
-		require(_order.orderId == _orderId, "unknown order");
 		require(_order.owner == _from, "access denied");
-		if (_giveAmount > _order.giveAmount) {
-			uint256 _amount = _giveAmount - _order.giveAmount;
-			IERC20(_giveToken).safeTransferFrom(_from, address(this), _amount);
-			balances[_giveToken] = balances[_giveToken].add(_amount);
-			_order.giveAmount = _giveAmount;
-			_order.takeAmount = _takeAmount;
+		if (_bookAmount > _order.bookAmount) {
+			uint256 _diffAmount = _bookAmount - _order.bookAmount;
+			IERC20(_bookToken).safeTransferFrom(_from, address(this), _diffAmount);
+			balances[_bookToken] = balances[_bookToken].add(_diffAmount);
+			_order.bookAmount = _bookAmount;
+			_order.execAmount = _execAmount;
 		}
 		else
-		if (_giveAmount < _order.giveAmount) {
-			_order.giveAmount = _giveAmount;
-			_order.takeAmount = _takeAmount;
-			uint256 _amount = _order.giveAmount - _giveAmount;
-			balances[_giveToken] = balances[_giveToken].sub(_amount);
-			IERC20(_giveToken).safeTransfer(_from, _amount);
+		if (_bookAmount < _order.bookAmount) {
+			uint256 _diffAmount = _order.bookAmount - _bookAmount;
+			_order.bookAmount = _bookAmount;
+			_order.execAmount = _execAmount;
+			balances[_bookToken] = balances[_bookToken].sub(_diffAmount);
+			IERC20(_bookToken).safeTransfer(_from, _diffAmount);
 		}
 		else {
-			_order.giveAmount = _giveAmount;
-			_order.takeAmount = _takeAmount;
+			_order.execAmount = _execAmount;
 		}
-		emit ChangeOrder(_giveToken, _takeToken, _orderId);
+		emit ChangeOrder(_bookToken, _execToken, _orderId, _bookAmount, _execAmount);
 	}
 
-	function executeOrderExactGive(address _giveToken, address _takeToken, bytes32 _orderId, uint256 _giveAmount, uint256 _minTakeAmount) external nonReentrant
+	function executeOrderBook(bytes32 _orderId, uint256 _bookAmount, uint256 _maxExecAmount) external nonReentrant
 	{
 		address _from = msg.sender;
-		uint256 _i = indexes[_orderId];
-		require(_i > 0, "unknown order");
-		_i--;
-		OrderInfo[] storage _orders = orders[_takeToken][_giveToken];
+		IndexInfo storage _index = indexes[_orderId];
+		address _bookToken = _index.bookToken;
+		address _execToken = _index.execToken;
+		uint256 _i = _index.i;
+		require(_bookToken != address(0), "unknown order");
+		OrderInfo[] storage _orders = orders[_bookToken][_execToken];
 		OrderInfo storage _order = _orders[_i];
-		require(_order.orderId == _orderId, "unknown order");
-		uint256 _takeAmount = _giveAmount.mul(_order.giveAmount) / _order.takeAmount;
-		require(_takeAmount <= _order.giveAmount, "insufficient balance");
-		require(_takeAmount >= _minTakeAmount, "high slippage");
-		_order.giveAmount = _order.giveAmount.sub(_takeAmount);
-		_order.takeAmount = _order.takeAmount.sub(_giveAmount);
-		balances[_takeToken] = balances[_takeToken].sub(_takeAmount);
-		IERC20(_takeToken).safeTransfer(_from, _takeAmount);
-		IERC20(_giveToken).safeTransferFrom(_from, _order.owner, _giveAmount);
-		emit ChangeOrder(_giveToken, _takeToken, _orderId);
+		uint256 _execAmount = _bookAmount.mul(_order.execAmount) / _order.bookAmount;
+		require(_bookAmount <= _order.bookAmount, "insufficient amount");
+		require(_execAmount <= _maxExecAmount, "high slippage");
+		_order.bookAmount = _order.bookAmount.sub(_bookAmount);
+		_order.execAmount = _order.execAmount.sub(_execAmount);
+		balances[_bookToken] = balances[_bookToken].sub(_bookAmount);
+		IERC20(_bookToken).safeTransfer(_from, _bookAmount);
+		IERC20(_execToken).safeTransferFrom(_from, _order.owner, _execAmount);
+		emit ChangeOrder(_bookToken, _execToken, _orderId, _bookAmount, _execAmount);
 	}
 
-	function executeOrderExactTake(address _giveToken, address _takeToken, bytes32 _orderId, uint256 _takeAmount, uint256 _maxGiveAmount) external nonReentrant
+	function executeOrderExec(bytes32 _orderId, uint256 _execAmount, uint256 _minBookAmount) external nonReentrant
 	{
 		address _from = msg.sender;
-		uint256 _i = indexes[_orderId];
-		require(_i > 0, "unknown order");
-		_i--;
-		OrderInfo[] storage _orders = orders[_takeToken][_giveToken];
+		IndexInfo storage _index = indexes[_orderId];
+		address _bookToken = _index.bookToken;
+		address _execToken = _index.execToken;
+		uint256 _i = _index.i;
+		require(_bookToken != address(0), "unknown order");
+		OrderInfo[] storage _orders = orders[_bookToken][_execToken];
 		OrderInfo storage _order = _orders[_i];
-		require(_order.orderId == _orderId, "unknown order");
-		uint256 _giveAmount = _takeAmount.mul(_order.takeAmount) / _order.giveAmount;
-		require(_takeAmount <= _order.giveAmount, "insufficient balance");
-		require(_giveAmount <= _maxGiveAmount, "high slippage");
-		_order.giveAmount = _order.giveAmount.sub(_takeAmount);
-		_order.takeAmount = _order.takeAmount.sub(_giveAmount);
-		balances[_takeToken] = balances[_takeToken].sub(_takeAmount);
-		IERC20(_takeToken).safeTransfer(_from, _takeAmount);
-		IERC20(_giveToken).safeTransferFrom(_from, _order.owner, _giveAmount);
-		emit ChangeOrder(_giveToken, _takeToken, _orderId);
+		uint256 _bookAmount = _execAmount.mul(_order.bookAmount) / _order.execAmount;
+		require(_bookAmount <= _order.bookAmount, "insufficient amount");
+		require(_bookAmount >= _minBookAmount, "high slippage");
+		_order.bookAmount = _order.bookAmount.sub(_bookAmount);
+		_order.execAmount = _order.execAmount.sub(_execAmount);
+		balances[_bookToken] = balances[_bookToken].sub(_bookAmount);
+		IERC20(_bookToken).safeTransfer(_from, _bookAmount);
+		IERC20(_execToken).safeTransferFrom(_from, _order.owner, _execAmount);
+		emit ChangeOrder(_bookToken, _execToken, _orderId, _bookAmount, _execAmount);
 	}
 
 	function recoverLostFunds(address _token, address _to) external nonReentrant
@@ -149,7 +164,7 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		IERC20(_token).safeTransfer(_to, _current - _balance);
 	}
 
-	event CreateOrder(address indexed _giveToken, address indexed _takeToken, bytes32 indexed _orderId);
-	event ChangeOrder(address indexed _giveToken, address indexed _takeToken, bytes32 indexed _orderId);
-	event CancelOrder(address indexed _giveToken, address indexed _takeToken, bytes32 indexed _orderId);
+	event CreateOrder(address indexed _bookToken, address indexed _execToken, bytes32 indexed _orderId, uint256 _bookAmount, uint256 _execAmount);
+	event ChangeOrder(address indexed _bookToken, address indexed _execToken, bytes32 indexed _orderId, uint256 _bookAmount, uint256 _execAmount);
+	event CancelOrder(address indexed _bookToken, address indexed _execToken, bytes32 indexed _orderId);
 }
