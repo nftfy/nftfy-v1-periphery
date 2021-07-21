@@ -44,7 +44,7 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		address payable _from = msg.sender;
 		uint256 _value = msg.value;
 		IndexInfo storage _index = indexes[_orderId];
-		require(orders[_index.bookToken][_index.execToken][_index.i].orderId == bytes(0), "duplicate order");
+		require(orders[_index.bookToken][_index.execToken][_index.i].orderId == bytes32(0), "duplicate order");
 		OrderInfo[] storage _orders = orders[_bookToken][_execToken];
 		uint256 _i = _orders.length;
 		if (_bookAmount > 0) {
