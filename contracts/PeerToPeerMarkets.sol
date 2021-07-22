@@ -25,9 +25,20 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		uint256 execAmount;
 	}
 
-	mapping (address => uint256) public balances;
+	mapping (address => uint256) private balances;
+
 	mapping (bytes32 => IndexInfo) public indexes;
 	mapping (address => mapping (address => OrderInfo[])) public orders;
+
+	uint256 public immutable fee;
+	address payable public immutable vault;
+
+	constructor (uint256 _fee, address payable _vault) public
+	{
+		require(_fee <= 1e18, "invalid fee");
+		fee = _fee;
+		vault = _vault;
+	}
 
 	function orderCount(address _bookToken, address _execToken) external view returns (uint256 _count)
 	{
@@ -149,7 +160,10 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		_order.execAmount -= _execAmount;
 		if (_bookAmount > 0) {
 			balances[_bookToken] -= _bookAmount;
-			_safeTransfer(_bookToken, _from, _bookAmount);
+			uint256 _feeAmount = _bookAmount.mul(fee) / 1e18;
+			uint256 _netAmount = _bookAmount - _feeAmount;
+			_safeTransfer(_bookToken, vault, _feeAmount);
+			_safeTransfer(_bookToken, _from, _netAmount);
 		}
 		if (_execAmount > 0) {
 			_safeTransferFrom(_execToken, _from, _value, _order.owner, _execAmount);
