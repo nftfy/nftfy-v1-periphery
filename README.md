@@ -6,7 +6,7 @@ Peripheral smart contracts for interacting with Nftfy V1.
 
 ## Deployed Contracts
 
-Ethereum Mainnet:
+Ethereum:
 
 | Contract                     | Network (ID) | Address                                                                                                               |
 | ---------------------------- | ------------ | --------------------------------------------------------------------------------------------------------------------- |
@@ -20,7 +20,8 @@ Ethereum Mainnet:
 | ----------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------- |
 | Boxes             | ropsten (3)  | [0x27DABaDFB488c2CB47a9CdC2fdE8C6A9f2d3f02e](https://ropsten.etherscan.io/address/0x27DABaDFB488c2CB47a9CdC2fdE8C6A9f2d3f02e) |
 | CollectionFactory | ropsten (3)  | [0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F](https://ropsten.etherscan.io/address/0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F) |
-| NftfyCollection   | ropsten (3)  | [0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb](https://rinkeby.etherscan.io/address/0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb) |
+| NftfyCollection   | ropsten (3)  | [0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb](https://ropsten.etherscan.io/address/0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb) |
+| TestTokenFactory  | ropsten (3)  | [0x4A4210BfD926174B96FfC39085461B7d8DaB2fBA](https://ropsten.etherscan.io/address/0x4A4210BfD926174B96FfC39085461B7d8DaB2fBA) |
 
 | Contract          | Network (ID) | Address                                                                                                                       |
 | ----------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------- |
@@ -41,6 +42,7 @@ Ethereum Mainnet:
 | Boxes             | goerli (5)   | [0x27DABaDFB488c2CB47a9CdC2fdE8C6A9f2d3f02e](https://goerli.etherscan.io/address/0x27DABaDFB488c2CB47a9CdC2fdE8C6A9f2d3f02e) |
 | CollectionFactory | goerli (5)   | [0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F](https://goerli.etherscan.io/address/0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F) |
 | NftfyCollection   | goerli (5)   | [0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb](https://goerli.etherscan.io/address/0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb) |
+| TestTokenFactory  | goerli (5)   | [0x4A4210BfD926174B96FfC39085461B7d8DaB2fBA](https://goerli.etherscan.io/address/0x4A4210BfD926174B96FfC39085461B7d8DaB2fBA) |
 
 Binance Smart Chain:
 
@@ -55,6 +57,7 @@ Binance Smart Chain:
 | Boxes             | bsctest (97) | [0x27DABaDFB488c2CB47a9CdC2fdE8C6A9f2d3f02e](https://testnet.bscscan.com/address/0x27DABaDFB488c2CB47a9CdC2fdE8C6A9f2d3f02e) |
 | CollectionFactory | bsctest (97) | [0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F](https://testnet.bscscan.com/address/0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F) |
 | NftfyCollection   | bsctest (97) | [0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb](https://testnet.bscscan.com/address/0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb) |
+| TestTokenFactory  | bsctest (97) | [0x4A4210BfD926174B96FfC39085461B7d8DaB2fBA](https://testnet.bscscan.com/address/0x4A4210BfD926174B96FfC39085461B7d8DaB2fBA) |
 
 Polygon Matic:
 
@@ -69,3 +72,4 @@ Polygon Matic:
 | Boxes             | matictest (80001) | [0x27DABaDFB488c2CB47a9CdC2fdE8C6A9f2d3f02e](https://mumbai.polygonscan.com/address/0x27DABaDFB488c2CB47a9CdC2fdE8C6A9f2d3f02e) |
 | CollectionFactory | matictest (80001) | [0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F](https://mumbai.polygonscan.com/address/0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F) |
 | NftfyCollection   | matictest (80001) | [0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb](https://mumbai.polygonscan.com/address/0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb) |
+| TestTokenFactory  | matictest (80001) | [0x4A4210BfD926174B96FfC39085461B7d8DaB2fBA](https://mumbai.polygonscan.com/address/0x4A4210BfD926174B96FfC39085461B7d8DaB2fBA) |
