@@ -19,6 +19,8 @@ Ethereum Mainnet:
 | Contract          | Network (ID) | Address                                                                                                                       |
 | ----------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------- |
 | Boxes             | ropsten (3)  | [0x27DABaDFB488c2CB47a9CdC2fdE8C6A9f2d3f02e](https://ropsten.etherscan.io/address/0x27DABaDFB488c2CB47a9CdC2fdE8C6A9f2d3f02e) |
+| CollectionFactory | ropsten (3)  | [0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F](https://ropsten.etherscan.io/address/0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F) |
+| NftfyCollection   | ropsten (3)  | [0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb](https://rinkeby.etherscan.io/address/0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb) |
 
 | Contract          | Network (ID) | Address                                                                                                                       |
 | ----------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------- |
@@ -37,6 +39,8 @@ Ethereum Mainnet:
 | Contract          | Network (ID) | Address                                                                                                                      |
 | ----------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------- |
 | Boxes             | goerli (5)   | [0x27DABaDFB488c2CB47a9CdC2fdE8C6A9f2d3f02e](https://goerli.etherscan.io/address/0x27DABaDFB488c2CB47a9CdC2fdE8C6A9f2d3f02e) |
+| CollectionFactory | goerli (5)   | [0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F](https://goerli.etherscan.io/address/0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F) |
+| NftfyCollection   | goerli (5)   | [0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb](https://goerli.etherscan.io/address/0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb) |
 
 Binance Smart Chain:
 
