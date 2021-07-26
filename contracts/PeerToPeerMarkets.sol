@@ -51,6 +51,44 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		return keccak256(abi.encode(_owner, _nonce));
 	}
 
+	function estimateOrderExecutionByBook(bytes32 _orderId, uint256 _bookAmount) external view returns (uint256 _execAmount, uint256 _bookFeeAmount)
+	{
+		IndexInfo storage _index = indexes[_orderId];
+		require(_index.exists, "unknown order");
+		address _bookToken = _index.bookToken;
+		address _execToken = _index.execToken;
+		uint256 _i = _index.i;
+		OrderInfo[] storage _orders = orders[_bookToken][_execToken];
+		OrderInfo storage _order = _orders[_i];
+		require(_bookAmount <= _order.bookAmount, "insufficient amount");
+		if (_order.bookAmount == 0) {
+			_execAmount = _order.execAmount;
+		} else {
+			_execAmount = _bookAmount.mul(_order.execAmount) / _order.bookAmount;
+		}
+		_bookFeeAmount = _bookAmount.mul(fee) / 1e18;
+		return (_execAmount, _bookFeeAmount);
+	}
+
+	function estimateOrderExecutionByExec(bytes32 _orderId, uint256 _execAmount) external view returns (uint256 _bookAmount, uint256 _bookFeeAmount)
+	{
+		IndexInfo storage _index = indexes[_orderId];
+		require(_index.exists, "unknown order");
+		address _bookToken = _index.bookToken;
+		address _execToken = _index.execToken;
+		uint256 _i = _index.i;
+		OrderInfo[] storage _orders = orders[_bookToken][_execToken];
+		OrderInfo storage _order = _orders[_i];
+		require(_execAmount <= _order.execAmount, "insufficient amount");
+		if (_order.execAmount == 0) {
+			_bookAmount = _order.bookAmount;
+		} else {
+			_bookAmount = _execAmount.mul(_order.bookAmount) / _order.execAmount;
+		}
+		_bookFeeAmount = _bookAmount.mul(fee) / 1e18;
+		return (_execAmount, _bookFeeAmount);
+	}
+
 	function createOrder(address _bookToken, address _execToken, bytes32 _orderId, uint256 _bookAmount, uint256 _execAmount) external payable nonReentrant
 	{
 		address payable _from = msg.sender;
@@ -156,19 +194,19 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		} else {
 			require(_execAmount == _bookAmount.mul(_order.execAmount) / _order.bookAmount, "price mismatch");
 		}
+		uint256 _bookFeeAmount = _bookAmount.mul(fee) / 1e18;
 		_order.bookAmount -= _bookAmount;
 		_order.execAmount -= _execAmount;
 		if (_bookAmount > 0) {
 			balances[_bookToken] -= _bookAmount;
-			uint256 _feeAmount = _bookAmount.mul(fee) / 1e18;
-			uint256 _netAmount = _bookAmount - _feeAmount;
-			_safeTransfer(_bookToken, vault, _feeAmount);
-			_safeTransfer(_bookToken, _from, _netAmount);
+			uint256 _bookNetAmount = _bookAmount - _bookFeeAmount;
+			_safeTransfer(_bookToken, vault, _bookFeeAmount);
+			_safeTransfer(_bookToken, _from, _bookNetAmount);
 		}
 		if (_execAmount > 0) {
 			_safeTransferFrom(_execToken, _from, _value, _order.owner, _execAmount);
 		}
-		emit Trade(_bookToken, _execToken, _bookAmount, _execAmount);
+		emit Trade(_bookToken, _execToken, _orderId, _bookAmount, _execAmount, _bookFeeAmount, _from);
 		emit UpdateOrder(_bookToken, _execToken, _orderId, _order.bookAmount, _order.execAmount);
 	}
 
@@ -221,5 +259,5 @@ contract PeerToPeerMarkets is ReentrancyGuard
 	event CreateOrder(address indexed _bookToken, address indexed _execToken, bytes32 indexed _orderId);
 	event CancelOrder(address indexed _bookToken, address indexed _execToken, bytes32 indexed _orderId);
 	event UpdateOrder(address indexed _bookToken, address indexed _execToken, bytes32 indexed _orderId, uint256 _bookAmount, uint256 _execAmount);
-	event Trade(address indexed _bookToken, address indexed _execToken, uint256 _bookAmount, uint256 _execAmount);
+	event Trade(address indexed _bookToken, address indexed _execToken, bytes32 indexed _orderId, uint256 _bookAmount, uint256 _execAmount, uint256 _bookFeeAmount, address _executor);
 }
