@@ -36,6 +36,7 @@ contract PeerToPeerMarkets is ReentrancyGuard
 	constructor (uint256 _fee, address payable _vault) public
 	{
 		require(_fee <= 1e18, "invalid fee");
+		require(_vault != address(0), "invalid address");
 		fee = _fee;
 		vault = _vault;
 	}
