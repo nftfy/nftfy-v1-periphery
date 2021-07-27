@@ -64,8 +64,7 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		if (_order.bookAmount == 0) {
 			_execAmount = 0;
 		} else {
-			_execAmount = _bookAmount.mul(_order.execAmount) / _order.bookAmount;
-			// fix
+			_execAmount = (_bookAmount.mul(_order.execAmount).add(_order.bookAmount - 1)) / _order.bookAmount;
 		}
 		_bookFeeAmount = _bookAmount.mul(fee) / 1e18;
 		return (_execAmount, _bookFeeAmount);
