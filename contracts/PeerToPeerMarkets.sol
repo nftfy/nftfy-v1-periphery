@@ -66,6 +66,9 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		} else {
 			_execAmount = _bookAmount.mul(_order.execAmount) / _order.bookAmount;
 		}
+		if (_order.execAmount != 0) {
+			require(_bookAmount == _execAmount.mul(_order.bookAmount) / _order.execAmount, "price mismatch");
+		}
 		_bookFeeAmount = _bookAmount.mul(fee) / 1e18;
 		return (_execAmount, _bookFeeAmount);
 	}
@@ -84,6 +87,9 @@ contract PeerToPeerMarkets is ReentrancyGuard
 			_bookAmount = _order.bookAmount;
 		} else {
 			_bookAmount = _execAmount.mul(_order.bookAmount) / _order.execAmount;
+		}
+		if (_order.bookAmount != 0) {
+			require(_execAmount == _bookAmount.mul(_order.execAmount) / _order.bookAmount, "price mismatch");
 		}
 		_bookFeeAmount = _bookAmount.mul(fee) / 1e18;
 		return (_execAmount, _bookFeeAmount);
@@ -193,6 +199,11 @@ contract PeerToPeerMarkets is ReentrancyGuard
 			require(_execAmount <= _order.execAmount, "excessive amount");
 		} else {
 			require(_execAmount == _bookAmount.mul(_order.execAmount) / _order.bookAmount, "price mismatch");
+		}
+		if (_order.bookAmount == 0) {
+			require(_bookAmount <= _order.bookAmount, "excessive amount");
+		} else {
+			require(_bookAmount == _execAmount.mul(_order.bookAmount) / _order.execAmount, "price mismatch");
 		}
 		uint256 _bookFeeAmount = _bookAmount.mul(fee) / 1e18;
 		_order.bookAmount -= _bookAmount;
