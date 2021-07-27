@@ -66,9 +66,7 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		} else {
 			_execAmount = _bookAmount.mul(_order.execAmount) / _order.bookAmount;
 		}
-		if (_order.execAmount != 0) {
-			require(_bookAmount == _execAmount.mul(_order.bookAmount) / _order.execAmount, "price mismatch");
-		}
+		require(_bookAmount.mul(_order.execAmount) == _execAmount.mul(_order.bookAmount), "price mismatch");
 		_bookFeeAmount = _bookAmount.mul(fee) / 1e18;
 		return (_execAmount, _bookFeeAmount);
 	}
@@ -84,13 +82,11 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		OrderInfo storage _order = _orders[_i];
 		require(_execAmount <= _order.execAmount, "insufficient amount");
 		if (_order.execAmount == 0) {
-			_bookAmount = _order.bookAmount;
+			_bookAmount = _order._bookAmount;
 		} else {
 			_bookAmount = _execAmount.mul(_order.bookAmount) / _order.execAmount;
 		}
-		if (_order.bookAmount != 0) {
-			require(_execAmount == _bookAmount.mul(_order.execAmount) / _order.bookAmount, "price mismatch");
-		}
+		require(_bookAmount.mul(_order.execAmount) == _execAmount.mul(_order.bookAmount), "price mismatch");
 		_bookFeeAmount = _bookAmount.mul(fee) / 1e18;
 		return (_execAmount, _bookFeeAmount);
 	}
@@ -101,12 +97,11 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		uint256 _value = msg.value;
 		IndexInfo storage _index = indexes[_orderId];
 		require(!_index.exists, "duplicate order");
+		require(_bookAmount.mul(_execAmount) > 0, "invalid price");
 		OrderInfo[] storage _orders = orders[_bookToken][_execToken];
 		uint256 _i = _orders.length;
-		if (_bookAmount > 0) {
-			_safeTransferFrom(_bookToken, _from, _value, address(this), _bookAmount);
-			balances[_bookToken] += _bookAmount;
-		}
+		_safeTransferFrom(_bookToken, _from, _value, address(this), _bookAmount);
+		balances[_bookToken] += _bookAmount;
 		_index.exists = true;
 		_index.bookToken = _bookToken;
 		_index.execToken = _execToken;
@@ -162,6 +157,7 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		OrderInfo[] storage _orders = orders[_bookToken][_execToken];
 		OrderInfo storage _order = _orders[_i];
 		require(_order.owner == _from, "access denied");
+		require(_bookAmount.mul(_execAmount) > 0, "invalid price");
 		if (_bookAmount > _order.bookAmount) {
 			uint256 _difference = _bookAmount - _order.bookAmount;
 			_safeTransferFrom(_bookToken, _from, _value, address(this), _difference);
@@ -195,16 +191,7 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		OrderInfo[] storage _orders = orders[_bookToken][_execToken];
 		OrderInfo storage _order = _orders[_i];
 		require(_bookAmount <= _order.bookAmount, "insufficient amount");
-		if (_order.bookAmount == 0) {
-			require(_execAmount <= _order.execAmount, "excessive amount");
-		} else {
-			require(_execAmount == _bookAmount.mul(_order.execAmount) / _order.bookAmount, "price mismatch");
-		}
-		if (_order.bookAmount == 0) {
-			require(_bookAmount <= _order.bookAmount, "excessive amount");
-		} else {
-			require(_bookAmount == _execAmount.mul(_order.bookAmount) / _order.execAmount, "price mismatch");
-		}
+		require(_bookAmount.mul(_order.execAmount) == _execAmount.mul(_order.bookAmount), "price mismatch");
 		uint256 _bookFeeAmount = _bookAmount.mul(fee) / 1e18;
 		_order.bookAmount -= _bookAmount;
 		_order.execAmount -= _execAmount;
