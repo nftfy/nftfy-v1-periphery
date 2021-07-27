@@ -60,13 +60,13 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		uint256 _i = _index.i;
 		OrderInfo[] storage _orders = orders[_bookToken][_execToken];
 		OrderInfo storage _order = _orders[_i];
-		require(_bookAmount <= _order.bookAmount, "insufficient amount");
+		require(_bookAmount <= _order.bookAmount, "excessive amount");
 		if (_order.bookAmount == 0) {
-			_execAmount = _order.execAmount;
+			_execAmount = 0;
 		} else {
 			_execAmount = _bookAmount.mul(_order.execAmount) / _order.bookAmount;
+			// fix
 		}
-		require(_bookAmount.mul(_order.execAmount) == _execAmount.mul(_order.bookAmount), "price mismatch");
 		_bookFeeAmount = _bookAmount.mul(fee) / 1e18;
 		return (_execAmount, _bookFeeAmount);
 	}
@@ -80,15 +80,14 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		uint256 _i = _index.i;
 		OrderInfo[] storage _orders = orders[_bookToken][_execToken];
 		OrderInfo storage _order = _orders[_i];
-		require(_execAmount <= _order.execAmount, "insufficient amount");
+		require(_execAmount <= _order.execAmount, "excessive amount");
 		if (_order.execAmount == 0) {
-			_bookAmount = _order._bookAmount;
+			_bookAmount = 0;
 		} else {
 			_bookAmount = _execAmount.mul(_order.bookAmount) / _order.execAmount;
 		}
-		require(_bookAmount.mul(_order.execAmount) == _execAmount.mul(_order.bookAmount), "price mismatch");
 		_bookFeeAmount = _bookAmount.mul(fee) / 1e18;
-		return (_execAmount, _bookFeeAmount);
+		return (_bookAmount, _bookFeeAmount);
 	}
 
 	function createOrder(address _bookToken, address _execToken, bytes32 _orderId, uint256 _bookAmount, uint256 _execAmount) external payable nonReentrant
@@ -190,8 +189,9 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		uint256 _i = _index.i;
 		OrderInfo[] storage _orders = orders[_bookToken][_execToken];
 		OrderInfo storage _order = _orders[_i];
-		require(_bookAmount <= _order.bookAmount, "insufficient amount");
-		require(_bookAmount.mul(_order.execAmount) == _execAmount.mul(_order.bookAmount), "price mismatch");
+		require(_bookAmount <= _order.bookAmount, "excessive amount");
+		require(_execAmount <= _order.execAmount, "excessive amount");
+		require(_bookAmount * _order.execAmount <= _execAmount * _order.bookAmount, "price mismatch");
 		uint256 _bookFeeAmount = _bookAmount.mul(fee) / 1e18;
 		_order.bookAmount -= _bookAmount;
 		_order.execAmount -= _execAmount;
