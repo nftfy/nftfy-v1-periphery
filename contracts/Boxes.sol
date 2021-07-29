@@ -77,7 +77,10 @@ contract Boxes is ReentrancyGuard, ERC721, ERC721Holder
 
 	function setTokenURI(uint256 _boxId, string memory _cid) external onlyOwner(_boxId)
 	{
+		address _from = msg.sender;
 		_setTokenURI(_boxId, _cid);
+		emit Transfer(_from, address(0), _boxId);
+		emit Transfer(address(0), _from, _boxId);
 	}
 
 	function boxAddItem(uint256 _boxId, address _token, uint256 _tokenId) external onlyOwner(_boxId) nonReentrant
