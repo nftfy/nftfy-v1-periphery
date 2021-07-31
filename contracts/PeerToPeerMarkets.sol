@@ -58,9 +58,8 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		require(_index.exists, "unknown order");
 		address _bookToken = _index.bookToken;
 		address _execToken = _index.execToken;
-		uint256 _i = _index.i;
 		OrderInfo[] storage _orders = orders[_bookToken][_execToken];
-		OrderInfo storage _order = _orders[_i];
+		OrderInfo storage _order = _orders[_index.i];
 		require(_bookAmount <= _order.bookAmount, "excessive amount");
 		if (_order.bookAmount == 0) {
 			_execAmount = 0;
@@ -77,9 +76,8 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		require(_index.exists, "unknown order");
 		address _bookToken = _index.bookToken;
 		address _execToken = _index.execToken;
-		uint256 _i = _index.i;
 		OrderInfo[] storage _orders = orders[_bookToken][_execToken];
-		OrderInfo storage _order = _orders[_i];
+		OrderInfo storage _order = _orders[_index.i];
 		require(_execAmount <= _order.execAmount, "excessive amount");
 		if (_order.execAmount == 0) {
 			_bookAmount = 0;
@@ -152,9 +150,8 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		require(_index.exists, "unknown order");
 		address _bookToken = _index.bookToken;
 		address _execToken = _index.execToken;
-		uint256 _i = _index.i;
 		OrderInfo[] storage _orders = orders[_bookToken][_execToken];
-		OrderInfo storage _order = _orders[_i];
+		OrderInfo storage _order = _orders[_index.i];
 		require(_order.owner == _from, "access denied");
 		require(_bookAmount.mul(_execAmount) > 0, "invalid price");
 		if (_bookAmount > _order.bookAmount) {
@@ -186,9 +183,8 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		require(_index.exists, "unknown order");
 		address _bookToken = _index.bookToken;
 		address _execToken = _index.execToken;
-		uint256 _i = _index.i;
 		OrderInfo[] storage _orders = orders[_bookToken][_execToken];
-		OrderInfo storage _order = _orders[_i];
+		OrderInfo storage _order = _orders[_index.i];
 		require(_bookAmount <= _order.bookAmount, "excessive amount");
 		require(_execAmount <= _order.execAmount, "excessive amount");
 		require(_bookAmount * _order.execAmount <= _execAmount * _order.bookAmount, "price mismatch");
@@ -204,7 +200,7 @@ contract PeerToPeerMarkets is ReentrancyGuard
 		if (_execAmount > 0) {
 			_safeTransferFrom(_execToken, _from, _value, _order.owner, _execAmount);
 		}
-		emit Trade(_bookToken, _execToken, _orderId, _bookAmount, _execAmount, _bookFeeAmount, _from);
+		emit Trade(_bookToken, _execToken, _orderId, _bookAmount, _execAmount, _bookFeeAmount, _order.owner, _from);
 		emit UpdateOrder(_bookToken, _execToken, _orderId, _order.bookAmount, _order.execAmount);
 	}
 
@@ -257,5 +253,5 @@ contract PeerToPeerMarkets is ReentrancyGuard
 	event CreateOrder(address indexed _bookToken, address indexed _execToken, bytes32 indexed _orderId);
 	event CancelOrder(address indexed _bookToken, address indexed _execToken, bytes32 indexed _orderId);
 	event UpdateOrder(address indexed _bookToken, address indexed _execToken, bytes32 indexed _orderId, uint256 _bookAmount, uint256 _execAmount);
-	event Trade(address indexed _bookToken, address indexed _execToken, bytes32 indexed _orderId, uint256 _bookAmount, uint256 _execAmount, uint256 _bookFeeAmount, address _executor);
+	event Trade(address indexed _bookToken, address indexed _execToken, bytes32 indexed _orderId, uint256 _bookAmount, uint256 _execAmount, uint256 _bookFeeAmount, address _maker, address _taker);
 }
