@@ -235,15 +235,10 @@ contract PeerToPeerMarkets is ReentrancyGuard
 	function _safeTransferFrom(address _token, address payable _from, uint256 _value, address payable _to, uint256 _amount) internal
 	{
 		if (_token == address(0)) {
-			require(_value >= _amount, "insufficient value");
-			uint256 _change = _value - _amount;
-			if (_change > 0) {
-				_from.transfer(_change);
-			}
-			if (_to != address(this)) {
-				_to.transfer(_amount);
-			}
+			require(_value == _amount, "invalid value");
+			if (_to != address(this)) _to.transfer(_amount);
 		} else {
+			require(_value == 0, "invalid value");
 			IERC20(_token).safeTransferFrom(_from, _to, _amount);
 		}
 	}
