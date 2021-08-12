@@ -8,11 +8,11 @@ Peripheral smart contracts for interacting with Nftfy V1.
 
 Ethereum:
 
-| Contract                     | Network (ID) | Address                                                                                                               |
-| ---------------------------- | ------------ | --------------------------------------------------------------------------------------------------------------------- |
-| Boxes                        | mainnet (1)  | [0xFc44f66D5D689cD9108c6577533E9572f53a50Bc](https://etherscan.io/address/0xFc44f66D5D689cD9108c6577533E9572f53a50Bc) |
-| CollectionFactory            | mainnet (1)  | [0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F](https://etherscan.io/address/0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F) |
-| NftfyCollection              | mainnet (1)  | [0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb](https://etherscan.io/address/0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb) |
+| Contract          | Network (ID) | Address                                                                                                               |
+| ----------------- | ------------ | --------------------------------------------------------------------------------------------------------------------- |
+| Boxes             | mainnet (1)  | [0xFc44f66D5D689cD9108c6577533E9572f53a50Bc](https://etherscan.io/address/0xFc44f66D5D689cD9108c6577533E9572f53a50Bc) |
+| CollectionFactory | mainnet (1)  | [0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F](https://etherscan.io/address/0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F) |
+| NftfyCollection   | mainnet (1)  | [0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb](https://etherscan.io/address/0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb) |
 
 | Contract          | Network (ID) | Address                                                                                                                       |
 | ----------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------- |
