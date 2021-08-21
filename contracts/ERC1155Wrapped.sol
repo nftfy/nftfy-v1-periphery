@@ -15,7 +15,7 @@ contract ERC1155Wrapped is ReentrancyGuard, ERC721, ERC1155Holder
 	}
 
 	uint256 public nextTokenId = 1;
-	mapping (uint256 => Index) public indexes;
+	mapping (uint256 => Index) public targets;
 
 	modifier onlyOwner(uint256 _tokenId)
 	{
@@ -43,7 +43,7 @@ contract ERC1155Wrapped is ReentrancyGuard, ERC721, ERC1155Holder
 		_tokenId = nextTokenId++;
 		_safeMint(_from, _tokenId);
 		_setTokenURI(_tokenId, _tokenURI);
-		indexes[_tokenId] = Index({ collection: _collection, id: _id });
+		targets[_tokenId] = Index({ collection: _collection, id: _id });
 		emit Deposit(_from, _collection, _id, _tokenId);
 		return _tokenId;
 	}
@@ -51,7 +51,7 @@ contract ERC1155Wrapped is ReentrancyGuard, ERC721, ERC1155Holder
 	function withdraw(uint256 _tokenId) external nonReentrant onlyOwner(_tokenId) returns (address _collection, uint256 _id)
 	{
 		address _from = msg.sender;
-		Index storage _index = indexes[_tokenId];
+		Index storage _index = targets[_tokenId];
 		_collection = _index.collection;
 		_id = _index.id;
 		_index.collection = address(0);
@@ -83,7 +83,7 @@ contract ERC1155Wrapped is ReentrancyGuard, ERC721, ERC1155Holder
 				uint256 _tokenId = nextTokenId++;
 				_safeMint(_from, _tokenId);
 				_setTokenURI(_tokenId, _tokenURI);
-				indexes[_tokenId] = Index({ collection: _collection, id: _id });
+				targets[_tokenId] = Index({ collection: _collection, id: _id });
 				emit Deposit(_from, _collection, _id, _tokenId);
 				_tokenIds[_i++] = _tokenId;
 			}
@@ -110,7 +110,7 @@ contract ERC1155Wrapped is ReentrancyGuard, ERC721, ERC1155Holder
 				_k = 0;
 			}
 			uint256 _tokenId = _tokenIds[_i];
-			Index storage _index = indexes[_tokenId];
+			Index storage _index = targets[_tokenId];
 			require(_index.collection == _collection, "unexpected collection");
 			require(_index.id == _ids[_j], "unexpected id");
 			_index.collection = address(0);
