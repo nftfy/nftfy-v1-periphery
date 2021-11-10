@@ -14,7 +14,7 @@ contract SignatureBasedPeerToPeerMarkets is ReentrancyGuard
 	using SafeERC20 for IERC20;
 	using Address for address payable;
 
-	mapping (bytes32 => uint256) executedBookAmounts;
+	mapping (bytes32 => uint256) public executedBookAmounts;
 
 	uint256 public immutable fee;
 	address payable public immutable vault;
@@ -32,9 +32,9 @@ contract SignatureBasedPeerToPeerMarkets is ReentrancyGuard
 		vault = _vault;
 	}
 
-	function generateOrderId(address _bookToken, address _execToken, uint256 _bookAmount, uint256 _execAmount, address payable _maker, uint256 _salt) public pure returns (bytes32 _orderId)
+	function generateOrderId(address _bookToken, address _execToken, uint256 _bookAmount, uint256 _execAmount, address payable _maker, uint256 _salt) public view returns (bytes32 _orderId)
 	{
-		return keccak256(abi.encodePacked(_bookToken, _execToken, _bookAmount, _execAmount, _maker, _salt));
+		return keccak256(abi.encodePacked(_chainId(), address(this), _bookToken, _execToken, _bookAmount, _execAmount, _maker, _salt));
 	}
 
 	function checkOrderExecution(address _bookToken, address _execToken, uint256 _bookAmount, uint256 _execAmount, address payable _maker, uint256 _salt, uint256 _requiredBookAmount) external view returns (uint256 _totalExecAmount)
@@ -175,6 +175,12 @@ contract SignatureBasedPeerToPeerMarkets is ReentrancyGuard
 	function _recoverSigner(bytes32 _hash, bytes memory _signature) internal pure returns (address _signer)
 	{
 		return ECDSA.recover(ECDSA.toEthSignedMessageHash(_hash), _signature);
+	}
+
+	function _chainId() internal pure returns (uint256 _chainid)
+	{
+		assembly { _chainid := chainid() }
+		return _chainid;
 	}
 
 	event Trade(address indexed _bookToken, address indexed _execToken, bytes32 indexed _orderId, uint256 _bookAmount, uint256 _execAmount, uint256 _execFeeAmount, address _maker, address _taker);

@@ -35,13 +35,12 @@ function _network(network: string): Network {
   throw new Error('Unknown network: ' + network);
 }
 
-const NETWORK = _network(process.env['NETWORK'] || 'mainnet');
+const NETWORK = _network(process.env['NETWORK'] || 'kovan');
 
 function getWeb3(): Web3 {
   const web3 = new Web3(HTTP_PROVIDER_URLS[NETWORK]);
   const account = web3.eth.accounts.privateKeyToAccount(PRIVATE_KEY);
-  // console.log(account);
-  web3.eth.defaultAccount = account.address;
+  web3.eth.accounts.wallet.add(account);
   return web3;
 }
 
@@ -50,7 +49,7 @@ function getWeb3(): Web3 {
 const SBP2P_ABI = require('../build/contracts/SignatureBasedPeerToPeerMarkets.json').abi;
 const SBP2P_ADDRESS: { [key in Network]: string } = {
   'mainnet': '0x0000000000000000000000000000000000000000',
-  'kovan': '0x0000000000000000000000000000000000000000',
+  'kovan': '0x4ac3563829ca52af878d937Ef7fC1995378DE7A9',
 };
 
 async function generateOrderId(bookToken: string, execToken: string, bookAmount: bigint, execAmount: bigint, maker: string, salt: bigint): Promise<string> {
@@ -168,30 +167,38 @@ async function createLimitBuyOrder(baseToken: string, quoteToken: string, amount
   if (amount <= 0n) throw new Error('Invalid amount: ' + amount);
   if (price <= 0n) throw new Error('Invalid price: ' + price);
   const web3 = getWeb3();
+  const account = web3.eth.accounts.wallet[0];
+  if (account === undefined) throw new Error('Panic');
   const bookToken = quoteToken;
   const execToken = baseToken;
   const bookAmount = amount * price / 1000000000000000000n;
   const execAmount = amount;
-  const maker = '0x0000000000000000000000000000000000000000';
+  const maker = account.address;
   const salt = BigInt(randomInt());
   const orderId = await generateOrderId(bookToken, execToken, bookAmount, execAmount, maker, salt);
   const { signature } = await web3.eth.accounts.sign(orderId, PRIVATE_KEY);
-  return { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price };
+  const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price };
+  await dbInsertOrder(order);
+  return order;
 }
 
 async function createLimitSellOrder(baseToken: string, quoteToken: string, amount: bigint, price: bigint): Promise<Order> {
   if (amount <= 0n) throw new Error('Invalid amount: ' + amount);
   if (price <= 0n) throw new Error('Invalid price: ' + price);
   const web3 = getWeb3();
+  const account = web3.eth.accounts.wallet[0];
+  if (account === undefined) throw new Error('Panic');
   const bookToken = baseToken;
   const execToken = quoteToken;
   const bookAmount = amount;
   const execAmount = amount * price / 1000000000000000000n;
-  const maker = '0x0000000000000000000000000000000000000000';
+  const maker = account.address;
   const salt = BigInt(randomInt());
   const orderId = await generateOrderId(bookToken, execToken, bookAmount, execAmount, maker, salt);
   const { signature } = await web3.eth.accounts.sign(orderId, PRIVATE_KEY);
-  return { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price };
+  const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price };
+  await dbInsertOrder(order);
+  return order;
 }
 
 async function cancelLimitOrder(orderId: string): Promise<void> {
@@ -199,11 +206,16 @@ async function cancelLimitOrder(orderId: string): Promise<void> {
   if (order === null) throw new Error('Unknown order: ' + orderId);
   const { bookToken, execToken, bookAmount, execAmount, salt } = order;
   await cancelOrder(bookToken, execToken, bookAmount, execAmount, salt);
+  await dbRemoveOrder(orderId);
 }
 
 // main
 
 async function main(args: string[]): Promise<void> {
+  const ETH = '0x0000000000000000000000000000000000000000';
+  const TEST = '0xfC0d9D4e5821Ee772e6c6dE75256f5c96E545DD0';
+  const order = await createLimitSellOrder(TEST, ETH, 5000000000000000000n, 1000000000000000000n);
+  console.log(order);
 }
 
 entrypoint(main);
