@@ -1,3 +1,4 @@
+import fs from 'fs';
 import Web3 from 'web3';
 
 // runtime
@@ -37,14 +38,33 @@ function _network(network: string): Network {
 
 const NETWORK = _network(process.env['NETWORK'] || 'kovan');
 
-function getWeb3(): Web3 {
+function initWeb3(): Web3 {
   const web3 = new Web3(HTTP_PROVIDER_URLS[NETWORK]);
   const account = web3.eth.accounts.privateKeyToAccount(PRIVATE_KEY);
   web3.eth.accounts.wallet.add(account);
   return web3;
 }
 
+const web3 = initWeb3();
+
 // abi
+
+const ERC20_ABI = require('../build/contracts/ERC20.json').abi;
+
+async function balanceOf(token: string, account: string): Promise<bigint> {
+  const contract = new web3.eth.Contract(ERC20_ABI, token);
+  return BigInt(await contract.methods.balanceOf(account).call());
+}
+
+async function allowance(token: string, account: string, spender: string): Promise<bigint> {
+  const contract = new web3.eth.Contract(ERC20_ABI, token);
+  return BigInt(await contract.methods.allowance(account, spender).call());
+}
+
+async function approve(token: string, spender: string, amount: bigint): Promise<void> {
+  const contract = new web3.eth.Contract(ERC20_ABI, token);
+  await contract.methods.approve(spender, amount).send();
+}
 
 const SBP2P_ABI = require('../build/contracts/SignatureBasedPeerToPeerMarkets.json').abi;
 const SBP2P_ADDRESS: { [key in Network]: string } = {
@@ -52,52 +72,61 @@ const SBP2P_ADDRESS: { [key in Network]: string } = {
   'kovan': '0x4ac3563829ca52af878d937Ef7fC1995378DE7A9',
 };
 
+async function executedBookAmounts(orderId: string): Promise<bigint> {
+  const contract = new web3.eth.Contract(SBP2P_ABI, SBP2P_ADDRESS[NETWORK]);
+  return BigInt(await contract.methods.executedBookAmounts(orderId).call());
+}
+
 async function generateOrderId(bookToken: string, execToken: string, bookAmount: bigint, execAmount: bigint, maker: string, salt: bigint): Promise<string> {
-  const web3 = getWeb3();
   const contract = new web3.eth.Contract(SBP2P_ABI, SBP2P_ADDRESS[NETWORK]);
   return await contract.methods.generateOrderId(bookToken, execToken, bookAmount, execAmount, maker, salt).call();
 }
 
 async function checkOrderExecution(bookToken: string, execToken: string, bookAmount: bigint, execAmount: bigint, maker: string, salt: bigint, requiredBookAmount: bigint): Promise<bigint> {
-  const web3 = getWeb3();
   const contract = new web3.eth.Contract(SBP2P_ABI, SBP2P_ADDRESS[NETWORK]);
-  return await contract.methods.checkOrderExecution(bookToken, execToken, bookAmount, execAmount, maker, salt, requiredBookAmount).call();
+  return BigInt(await contract.methods.checkOrderExecution(bookToken, execToken, bookAmount, execAmount, maker, salt, requiredBookAmount).call());
 }
 
 async function checkOrdersExecution(bookToken: string, execToken: string, bookAmounts: bigint[], execAmounts: bigint[], makers: string[], salts: bigint[], lastRequiredBookAmount: bigint): Promise<bigint> {
-  const web3 = getWeb3();
   const contract = new web3.eth.Contract(SBP2P_ABI, SBP2P_ADDRESS[NETWORK]);
-  return await contract.methods.checkOrdersExecution(bookToken, execToken, bookAmounts, execAmounts, makers, salts, lastRequiredBookAmount).call();
+  return BigInt(await contract.methods.checkOrdersExecution(bookToken, execToken, bookAmounts, execAmounts, makers, salts, lastRequiredBookAmount).call());
 }
 
 async function executeOrder(bookToken: string, execToken: string, bookAmount: bigint, execAmount: bigint, maker: string, salt: bigint, signature: string, requiredBookAmount: bigint): Promise<void> {
-  const web3 = getWeb3();
   const contract = new web3.eth.Contract(SBP2P_ABI, SBP2P_ADDRESS[NETWORK]);
   await contract.methods.executeOrder(bookToken, execToken, bookAmount, execAmount, salt, signature, requiredBookAmount).send();
 }
 
-async function executeOrders(bookToken: string, execToken: string, bookAmounts: bigint[], execAmounts: bigint[], makers: string[], salts: bigint[], signatures: string, lastRequiredBookAmount: bigint): Promise<void> {
-  const web3 = getWeb3();
+async function executeOrders(bookToken: string, execToken: string, bookAmounts: bigint[], execAmounts: bigint[], makers: string[], salts: bigint[], signatures: string[], lastRequiredBookAmount: bigint): Promise<void> {
   const contract = new web3.eth.Contract(SBP2P_ABI, SBP2P_ADDRESS[NETWORK]);
-  await contract.methods.executeOrders(bookToken, execToken, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount).send();
+  const siglist = '0x' + signatures.map((signature) => signature.substr(2)).join('');
+  await contract.methods.executeOrders(bookToken, execToken, bookAmounts, execAmounts, makers, salts, siglist, lastRequiredBookAmount).send();
 }
 
 async function cancelOrder(bookToken: string, execToken: string, bookAmount: bigint, execAmount: bigint, salt: bigint): Promise<void> {
-  const web3 = getWeb3();
   const contract = new web3.eth.Contract(SBP2P_ABI, SBP2P_ADDRESS[NETWORK]);
   await contract.methods.cancelOrder(bookToken, execToken, bookAmount, execAmount, salt).send();
 }
 
 async function cancelOrders(bookToken: string, execToken: string, bookAmounts: bigint[], execAmounts: bigint[], salts: bigint[]): Promise<void> {
-  const web3 = getWeb3();
   const contract = new web3.eth.Contract(SBP2P_ABI, SBP2P_ADDRESS[NETWORK]);
   await contract.methods.cancelOrders(bookToken, execToken, bookAmounts, execAmounts, salts).send();
 }
 
 // db
 
-const db: { [bookToken: string]: { [execToken: string]: Order[] } } = {};
-const indexes: { [orderId: string]: { bookToken: string, execToken: string } } = {};
+let db: { [bookToken: string]: { [execToken: string]: Order[] } } = {};
+let indexes: { [orderId: string]: { bookToken: string, execToken: string } } = {};
+
+function dbLoad(): void {
+  try { const data = JSON.parse(fs.readFileSync('db-' + NETWORK + '.json').toString()); db = data.db; indexes = data.indexes; } catch (e) { }
+}
+
+function dbSave(): void {
+  try { fs.writeFileSync('db-' + NETWORK + '.json', JSON.stringify({ db, indexes }, undefined, 2)); } catch (e) { }
+}
+
+dbLoad();
 
 async function dbInsertOrder(order: Order): Promise<void> {
   const { orderId, bookToken, execToken } = order;
@@ -106,6 +135,7 @@ async function dbInsertOrder(order: Order): Promise<void> {
   const level1 = level0[execToken] || (level0[execToken] = []);
   level1.push({ ...order });
   indexes[orderId] = { bookToken, execToken };
+  dbSave();
 }
 
 async function dbRemoveOrder(orderId: string): Promise<void> {
@@ -118,6 +148,7 @@ async function dbRemoveOrder(orderId: string): Promise<void> {
   if (index < 0) throw new Error('Panic');
   level1.splice(index, 1);
   delete indexes[orderId];
+  dbSave();
 }
 
 async function dbLookupOrder(orderId: string): Promise<Order | null> {
@@ -133,16 +164,26 @@ async function dbLookupOrder(orderId: string): Promise<Order | null> {
   return order;
 }
 
+async function dbBookSumOrders(bookToken: string, maker = ''): Promise<bigint> {
+  const level0 = db[bookToken] || (db[bookToken] = {});
+  let sum = 0n;
+  for (const level1 of Object.values(level0)) {
+    const orders = [...level1.filter((order) => order.maker === (maker || order.maker))];
+    sum += orders.reduce((acc, order) => acc + order.bookAmount, 0n);
+  }
+  return sum;
+}
+
 async function dbLookupOrders(bookToken: string, execToken: string, direction: 'asc' | 'desc', maker = ''): Promise<Order[]> {
   const level0 = db[bookToken] || (db[bookToken] = {});
   const level1 = level0[execToken] || (level0[execToken] = []);
   const orders = [...level1.filter((order) => order.maker === (maker || order.maker))];
   if (direction === 'asc') {
-    orders.sort((order1, order2) => order1.price < order2.price ? -1 : order1.price > order2.price ? 1 : 0);
+    orders.sort((order1, order2) => order1.price < order2.price ? -1 : order1.price > order2.price ? 1 : order1.time - order2.time);
     return orders;
   }
   if (direction === 'desc') {
-    orders.sort((order1, order2) => order1.price > order2.price ? -1 : order1.price < order2.price ? 1 : 0);
+    orders.sort((order1, order2) => order2.price < order1.price ? -1 : order2.price > order1.price ? 1 : order2.time - order1.time);
     return orders;
   }
   throw new Error('Panic');
@@ -161,52 +202,139 @@ type Order = {
   signature: string;
 
   price: bigint;
+  time: number;
 };
 
-async function createLimitBuyOrder(baseToken: string, quoteToken: string, amount: bigint, price: bigint): Promise<Order> {
-  if (amount <= 0n) throw new Error('Invalid amount: ' + amount);
-  if (price <= 0n) throw new Error('Invalid price: ' + price);
-  const web3 = getWeb3();
+async function availableForLimitOrder(bookToken: string): Promise<bigint> {
   const account = web3.eth.accounts.wallet[0];
   if (account === undefined) throw new Error('Panic');
+  if (bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid token: ' + bookToken);
+  const maker = account.address;
+  const balance = await balanceOf(bookToken, maker);
+  const approved = await allowance(bookToken, maker, SBP2P_ADDRESS[NETWORK]);
+  const free = balance < approved ? balance : approved;
+  const used = await dbBookSumOrders(bookToken, maker);
+  return free > used ? free - used : 0n;
+}
+
+async function createLimitBuyOrder(baseToken: string, quoteToken: string, amount: bigint, price: bigint): Promise<Order> {
+  const account = web3.eth.accounts.wallet[0];
+  if (account === undefined) throw new Error('Panic');
+  if (amount <= 0n) throw new Error('Invalid amount: ' + amount);
+  if (price <= 0n) throw new Error('Invalid price: ' + price);
   const bookToken = quoteToken;
   const execToken = baseToken;
+  if (bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid token: ' + bookToken);
   const bookAmount = amount * price / 1000000000000000000n;
   const execAmount = amount;
   const maker = account.address;
   const salt = BigInt(randomInt());
+  const time = Date.now();
   const orderId = await generateOrderId(bookToken, execToken, bookAmount, execAmount, maker, salt);
   const { signature } = await web3.eth.accounts.sign(orderId, PRIVATE_KEY);
-  const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price };
+  const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price, time };
+  const available = await availableForLimitOrder(bookToken);
+  if (available < bookAmount) throw new Error('Insufficient balance: ' + available);
   await dbInsertOrder(order);
   return order;
 }
 
 async function createLimitSellOrder(baseToken: string, quoteToken: string, amount: bigint, price: bigint): Promise<Order> {
-  if (amount <= 0n) throw new Error('Invalid amount: ' + amount);
-  if (price <= 0n) throw new Error('Invalid price: ' + price);
-  const web3 = getWeb3();
   const account = web3.eth.accounts.wallet[0];
   if (account === undefined) throw new Error('Panic');
+  if (amount <= 0n) throw new Error('Invalid amount: ' + amount);
+  if (price <= 0n) throw new Error('Invalid price: ' + price);
   const bookToken = baseToken;
   const execToken = quoteToken;
+  if (bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid token: ' + bookToken);
   const bookAmount = amount;
   const execAmount = amount * price / 1000000000000000000n;
   const maker = account.address;
   const salt = BigInt(randomInt());
+  const time = Date.now();
   const orderId = await generateOrderId(bookToken, execToken, bookAmount, execAmount, maker, salt);
   const { signature } = await web3.eth.accounts.sign(orderId, PRIVATE_KEY);
-  const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price };
+  const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price, time };
+  const available = await availableForLimitOrder(bookToken);
+  if (available < bookAmount) throw new Error('Insufficient balance: ' + available);
   await dbInsertOrder(order);
   return order;
 }
 
 async function cancelLimitOrder(orderId: string): Promise<void> {
+  const account = web3.eth.accounts.wallet[0];
+  if (account === undefined) throw new Error('Panic');
   const order = await dbLookupOrder(orderId);
   if (order === null) throw new Error('Unknown order: ' + orderId);
-  const { bookToken, execToken, bookAmount, execAmount, salt } = order;
-  await cancelOrder(bookToken, execToken, bookAmount, execAmount, salt);
+  if (order.maker !== account.address) throw new Error('Invalid order: ' + orderId);
+  const execAmount = await executedBookAmounts(orderId);
+  if (execAmount > 0n) {
+    const { bookToken, execToken, bookAmount, execAmount, salt } = order;
+    await cancelOrder(bookToken, execToken, bookAmount, execAmount, salt);
+  }
   await dbRemoveOrder(orderId);
+}
+
+type PreparedExecution = {
+  bookToken: string;
+  execToken: string;
+  bookAmounts: bigint[];
+  execAmounts: bigint[];
+  makers: string[];
+  salts: bigint[];
+  signatures: string[];
+  lastRequiredBookAmount: bigint;
+};
+
+async function prepareMarketBuyOrder(baseToken: string, quoteToken: string, amount: bigint): Promise<PreparedExecution> {
+  if (amount <= 0n) throw new Error('Invalid amount: ' + amount);
+  const bookToken = baseToken;
+  const execToken = quoteToken;
+  const orders = await dbLookupOrders(bookToken, execToken, 'asc');
+  const bookAmounts = [];
+  const execAmounts = [];
+  const makers = [];
+  const salts = [];
+  const signatures = [];
+  for (const { bookAmount, execAmount, maker, salt, signature } of orders) {
+    bookAmounts.push(bookAmount);
+    execAmounts.push(execAmount);
+    makers.push(maker);
+    salts.push(salt);
+    signatures.push(signature);
+    amount -= bookAmount;
+    if (amount <= 0n) {
+      const lastRequiredBookAmount = bookAmount + amount;
+      return { bookToken, execToken, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount };
+    }
+  }
+  throw new Error('Insufficient liquidity');
+}
+
+async function prepareMarketSellOrder(baseToken: string, quoteToken: string, amount: bigint): Promise<PreparedExecution> {
+  if (amount <= 0n) throw new Error('Invalid amount: ' + amount);
+  const bookToken = quoteToken;
+  const execToken = baseToken;
+  const orders = await dbLookupOrders(bookToken, execToken, 'desc');
+  const bookAmounts = [];
+  const execAmounts = [];
+  const makers = [];
+  const salts = [];
+  const signatures = [];
+  for (const { bookAmount, execAmount, maker, salt, signature } of orders) {
+    bookAmounts.push(bookAmount);
+    execAmounts.push(execAmount);
+    makers.push(maker);
+    salts.push(salt);
+    signatures.push(signature);
+    amount -= execAmount;
+    if (amount <= 0n) {
+      const lastRequiredExecAmount = execAmount + amount;
+      const lastRequiredBookAmount = lastRequiredExecAmount * bookAmount / execAmount;
+      return { bookToken, execToken, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount };
+    }
+  }
+  throw new Error('Insufficient liquidity');
 }
 
 // main
