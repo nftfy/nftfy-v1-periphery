@@ -13,7 +13,8 @@
     "dotenv": "^8.2.0",
     "ganache-cli": "^6.12.2",
     "truffle": "^5.1.66",
-    "truffle-flattener": "^1.5.0"
+    "truffle-flattener": "^1.5.0",
+    "typescript": "^4.4.3"
   },
   "scripts": {
     "build": "truffle compile",
@@ -21,7 +22,8 @@
     "deploy:mainnet": "truffle migrate --network mainnet",
     "deploy:kovan": "truffle migrate --network kovan",
     "source": "truffle-flattener contracts/*.sol | sed '/^.*SPDX-License-Identifier:.*$/d' | sed '1s/^/\\/\\/ SPDX-License-Identifier: GPL-3.0-only\\n\\n/' > Contracts.sol",
-    "test": "truffle test"
+    "test": "truffle test",
+    "tsc": "tsc"
   },
   "repository": {
     "type": "git",
