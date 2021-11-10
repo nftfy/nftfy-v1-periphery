@@ -3,8 +3,9 @@
     "target": "es2020",
 
     "module": "commonjs",
+    "esModuleInterop": true,
 
-    "outDir": "./build/js/",
+    "outDir": "./build/",
     "removeComments": true,
     "noEmitOnError": true,
 
