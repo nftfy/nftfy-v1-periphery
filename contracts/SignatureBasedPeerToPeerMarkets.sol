@@ -126,6 +126,11 @@ contract SignatureBasedPeerToPeerMarkets is ReentrancyGuard
 		require(_maker == _recoverSigner(_orderId, _signature), "access denied");
 		require(executedBookAmounts[_orderId] < _bookAmount, "inactive order");
 		{
+			uint64 _startTime = uint64(_salt >> 64);
+			uint64 _endTime = uint64(_salt);
+			require(_startTime <= now && now < _endTime, "invalid timeframe");
+		}
+		{
 			uint256 _availableBookAmount = _bookAmount - executedBookAmounts[_orderId];
 			if (_requiredBookAmount == uint256(-1)) {
 				_requiredBookAmount = _availableBookAmount;

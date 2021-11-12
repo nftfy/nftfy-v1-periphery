@@ -82,7 +82,7 @@ async function approve(token: string, spender: string, amount: bigint): Promise<
 const SBP2P_ABI = require('../build/contracts/SignatureBasedPeerToPeerMarkets.json').abi;
 const SBP2P_ADDRESS: { [key in Network]: string } = {
   'mainnet': '0x0000000000000000000000000000000000000000',
-  'kovan': '0x8c309D800a52d5AF571bd979E9aEd8A22bAb2a21',
+  'kovan': '0x9e2873c1c89696987F671861901A06Ad7Cb97f8C',
 };
 
 async function executedBookAmounts(orderId: string): Promise<bigint> {
@@ -224,6 +224,8 @@ async function dbLookupOrders(bookToken: string, execToken: string, direction: '
 
 // lib
 
+const DEFAULT_ORDER_DURATION = 100 * 365 * 24 * 60 * 60 * 1000; // 100 years
+
 type Order = {
   orderId: string;
   bookToken: string;
@@ -237,7 +239,13 @@ type Order = {
   freeBookAmount: bigint;
   price: bigint;
   time: number;
+  duration: number;
 };
+
+function generateSalt(duration = DEFAULT_ORDER_DURATION, startTime = Date.now(), random = randomInt()): bigint {
+  const endTime = startTime + duration;
+  return BigInt(random) << 128n | BigInt(Math.floor(startTime / 1000)) << 64n | BigInt(Math.floor(endTime / 1000));
+}
 
 async function enableOrderCreation(bookToken: string): Promise<void> {
   if (bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid token: ' + bookToken);
@@ -253,7 +261,7 @@ async function availableForLimitOrder(bookToken: string, maker = currentUser()):
   return free >= used ? free - used : -1n;
 }
 
-async function createLimitBuyOrder(baseToken: string, quoteToken: string, amount: bigint, price: bigint): Promise<Order> {
+async function createLimitBuyOrder(baseToken: string, quoteToken: string, amount: bigint, price: bigint, duration = DEFAULT_ORDER_DURATION): Promise<Order> {
   if (amount <= 0n) throw new Error('Invalid amount: ' + amount);
   if (price <= 0n) throw new Error('Invalid price: ' + price);
   const bookToken = quoteToken;
@@ -263,18 +271,18 @@ async function createLimitBuyOrder(baseToken: string, quoteToken: string, amount
   const execAmount = amount;
   const freeBookAmount = bookAmount;
   const maker = currentUser();
-  const salt = BigInt(randomInt());
   const time = Date.now();
+  const salt = generateSalt(duration, time);
   const orderId = await generateOrderId(bookToken, execToken, bookAmount, execAmount, maker, salt);
   const signature = await sign(orderId);
-  const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price, time, freeBookAmount };
+  const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, freeBookAmount, price, time, duration };
   const available = await availableForLimitOrder(bookToken);
   if (available < bookAmount) throw new Error('Insufficient balance: ' + available);
   await dbInsertOrder(order);
   return order;
 }
 
-async function createLimitSellOrder(baseToken: string, quoteToken: string, amount: bigint, price: bigint): Promise<Order> {
+async function createLimitSellOrder(baseToken: string, quoteToken: string, amount: bigint, price: bigint, duration = DEFAULT_ORDER_DURATION): Promise<Order> {
   if (amount <= 0n) throw new Error('Invalid amount: ' + amount);
   if (price <= 0n) throw new Error('Invalid price: ' + price);
   const bookToken = baseToken;
@@ -284,11 +292,11 @@ async function createLimitSellOrder(baseToken: string, quoteToken: string, amoun
   const execAmount = amount * price / 1000000000000000000n;
   const freeBookAmount = bookAmount;
   const maker = currentUser();
-  const salt = BigInt(randomInt());
   const time = Date.now();
+  const salt = generateSalt(duration, time);
   const orderId = await generateOrderId(bookToken, execToken, bookAmount, execAmount, maker, salt);
   const signature = await sign(orderId);
-  const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price, time, freeBookAmount };
+  const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, freeBookAmount, price, time, duration };
   const available = await availableForLimitOrder(bookToken);
   if (available < bookAmount) throw new Error('Insufficient balance: ' + available);
   await dbInsertOrder(order);
@@ -301,7 +309,7 @@ async function cancelLimitOrder(orderId: string, forceOnChain = false): Promise<
   if (order === null) throw new Error('Unknown order: ' + orderId);
   if (order.maker !== maker) throw new Error('Invalid order: ' + orderId);
   const execAmount = await executedBookAmounts(orderId);
-  if (execAmount > 0n || forceOnChain) {
+  if ((execAmount > 0n || forceOnChain) && (order.time + order.duration > Date.now())) {
     // the order was partially executed, exposed publicly, and needs to be cancelled on-chain
     const { bookToken, execToken, bookAmount, execAmount, salt } = order;
     await cancelOrder(bookToken, execToken, bookAmount, execAmount, salt);
@@ -333,7 +341,8 @@ async function prepareMarketBuyOrder(baseToken: string, quoteToken: string, amou
   const salts = [];
   const signatures = [];
   const available: { [adress: string]: bigint } = {};
-  for (const { orderId, bookAmount, execAmount, maker, salt, signature, freeBookAmount } of orders) {
+  for (const { orderId, bookAmount, execAmount, maker, salt, signature, freeBookAmount, time, duration } of orders) {
+    if (Date.now() >= time + duration) continue;
     available[maker] = available[maker] || await availableForLimitOrder(bookToken, maker);
     if ((available[maker] || 0n) < 0n) continue;
     orderIds.push(orderId);
@@ -363,10 +372,11 @@ async function prepareMarketSellOrder(baseToken: string, quoteToken: string, amo
   const salts = [];
   const signatures = [];
   const available: { [adress: string]: bigint } = {};
-  for (const { orderId, bookAmount, execAmount, maker, salt, signature, freeBookAmount } of orders) {
-    const freeExecAmount = (freeBookAmount * execAmount + (bookAmount - 1n)) / bookAmount;
+  for (const { orderId, bookAmount, execAmount, maker, salt, signature, freeBookAmount, time, duration } of orders) {
+    if (Date.now() >= time + duration) continue;
     available[maker] = available[maker] || await availableForLimitOrder(bookToken, maker);
     if ((available[maker] || 0n) < 0n) continue;
+    const freeExecAmount = (freeBookAmount * execAmount + (bookAmount - 1n)) / bookAmount;
     orderIds.push(orderId);
     bookAmounts.push(bookAmount);
     execAmounts.push(execAmount);
