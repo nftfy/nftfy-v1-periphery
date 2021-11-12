@@ -48,8 +48,7 @@ contract SignatureBasedPeerToPeerMarkets is ReentrancyGuard
 		if (_makers.length == 0) return 0;
 		_totalExecAmount = 0;
 		for (uint256 _i = 0; _i < _makers.length - 1; _i++) {
-			uint256 _requiredBookAmount = _bookAmounts[_i];
-			uint256 _localExecAmount = _checkOrderExecution(_bookToken, _execToken, _bookAmounts[_i], _execAmounts[_i], _makers[_i], _salts[_i], _requiredBookAmount);
+			uint256 _localExecAmount = _checkOrderExecution(_bookToken, _execToken, _bookAmounts[_i], _execAmounts[_i], _makers[_i], _salts[_i], uint256(-1));
 			uint256 _newTotalExecAmount = _totalExecAmount + _localExecAmount;
 			if (_newTotalExecAmount <= _totalExecAmount) return 0;
 			_totalExecAmount = _newTotalExecAmount;
@@ -70,7 +69,11 @@ contract SignatureBasedPeerToPeerMarkets is ReentrancyGuard
 		bytes32 _orderId = generateOrderId(_bookToken, _execToken, _bookAmount, _execAmount, _maker, _salt);
 		if (executedBookAmounts[_orderId] >= _bookAmount) return 0;
 		uint256 _availableBookAmount = _bookAmount - executedBookAmounts[_orderId];
-		if (_requiredBookAmount > _availableBookAmount) return 0;
+		if (_requiredBookAmount == uint256(-1)) {
+			_requiredBookAmount = _availableBookAmount;
+		} else {
+			if (_requiredBookAmount > _availableBookAmount) return 0;
+		}
 		if (_requiredBookAmount > IERC20(_bookToken).allowance(_maker, address(this))) return 0;
 		if (_requiredBookAmount > IERC20(_bookToken).balanceOf(_maker)) return 0;
 		_requiredExecAmount = _requiredBookAmount.mul(_execAmount).add(_bookAmount - 1) / _bookAmount;
@@ -100,8 +103,7 @@ contract SignatureBasedPeerToPeerMarkets is ReentrancyGuard
 		execToken_ = _execToken;
 		for (uint256 _i = 0; _i < _makers.length - 1; _i++) {
 			bytes memory _signature = _extractSignature(_signatures, _i);
-			uint256 _requiredBookAmount = _bookAmounts[_i];
-			_executeOrder(_bookAmounts[_i], _execAmounts[_i], _makers[_i], _salts[_i], _signature, _taker, _requiredBookAmount);
+			_executeOrder(_bookAmounts[_i], _execAmounts[_i], _makers[_i], _salts[_i], _signature, _taker, uint256(-1));
 		}
 		{
 			uint256 _i = _makers.length - 1;
@@ -125,7 +127,11 @@ contract SignatureBasedPeerToPeerMarkets is ReentrancyGuard
 		require(executedBookAmounts[_orderId] < _bookAmount, "inactive order");
 		{
 			uint256 _availableBookAmount = _bookAmount - executedBookAmounts[_orderId];
-			require(_requiredBookAmount <= _availableBookAmount, "insufficient liquidity");
+			if (_requiredBookAmount == uint256(-1)) {
+				_requiredBookAmount = _availableBookAmount;
+			} else {
+				require(_requiredBookAmount <= _availableBookAmount, "insufficient liquidity");
+			}
 		}
 		uint256 _requiredExecAmount = _requiredBookAmount.mul(_execAmount).add(_bookAmount - 1) / _bookAmount;
 		uint256 _requiredExecFeeAmount = _requiredExecAmount.mul(fee) / 1e18;
