@@ -74,14 +74,15 @@ async function allowance(token: string, account: string, spender: string): Promi
 }
 
 async function approve(token: string, spender: string, amount: bigint): Promise<void> {
+  const from = currentUser();
   const contract = new web3.eth.Contract(ERC20_ABI, token);
-  await contract.methods.approve(spender, amount).send();
+  await contract.methods.approve(spender, amount).send({ from, gas: 75000 });
 }
 
 const SBP2P_ABI = require('../build/contracts/SignatureBasedPeerToPeerMarkets.json').abi;
 const SBP2P_ADDRESS: { [key in Network]: string } = {
   'mainnet': '0x0000000000000000000000000000000000000000',
-  'kovan': '0x4ac3563829ca52af878d937Ef7fC1995378DE7A9',
+  'kovan': '0x8c309D800a52d5AF571bd979E9aEd8A22bAb2a21',
 };
 
 async function executedBookAmounts(orderId: string): Promise<bigint> {
@@ -104,25 +105,29 @@ async function checkOrdersExecution(bookToken: string, execToken: string, bookAm
   return BigInt(await contract.methods.checkOrdersExecution(bookToken, execToken, bookAmounts, execAmounts, makers, salts, lastRequiredBookAmount).call());
 }
 
-async function executeOrder(bookToken: string, execToken: string, bookAmount: bigint, execAmount: bigint, maker: string, salt: bigint, signature: string, requiredBookAmount: bigint): Promise<void> {
+async function executeOrder(value: bigint, bookToken: string, execToken: string, bookAmount: bigint, execAmount: bigint, maker: string, salt: bigint, signature: string, requiredBookAmount: bigint): Promise<void> {
+  const from = currentUser();
   const contract = new web3.eth.Contract(SBP2P_ABI, SBP2P_ADDRESS[NETWORK]);
-  await contract.methods.executeOrder(bookToken, execToken, bookAmount, execAmount, salt, signature, requiredBookAmount).send();
+  await contract.methods.executeOrder(bookToken, execToken, bookAmount, execAmount, maker, salt, signature, requiredBookAmount).send({ from, value: String(value), gas: 150000 });
 }
 
-async function executeOrders(bookToken: string, execToken: string, bookAmounts: bigint[], execAmounts: bigint[], makers: string[], salts: bigint[], signatures: string[], lastRequiredBookAmount: bigint): Promise<void> {
+async function executeOrders(value: bigint, bookToken: string, execToken: string, bookAmounts: bigint[], execAmounts: bigint[], makers: string[], salts: bigint[], signatures: string[], lastRequiredBookAmount: bigint): Promise<void> {
+  const from = currentUser();
   const contract = new web3.eth.Contract(SBP2P_ABI, SBP2P_ADDRESS[NETWORK]);
   const siglist = '0x' + signatures.map((signature) => signature.substr(2)).join('');
-  await contract.methods.executeOrders(bookToken, execToken, bookAmounts, execAmounts, makers, salts, siglist, lastRequiredBookAmount).send();
+  await contract.methods.executeOrders(bookToken, execToken, bookAmounts, execAmounts, makers, salts, siglist, lastRequiredBookAmount).send({ from, value: String(value), gas: 150000 * salts.length + 50000 });
 }
 
 async function cancelOrder(bookToken: string, execToken: string, bookAmount: bigint, execAmount: bigint, salt: bigint): Promise<void> {
+  const from = currentUser();
   const contract = new web3.eth.Contract(SBP2P_ABI, SBP2P_ADDRESS[NETWORK]);
-  await contract.methods.cancelOrder(bookToken, execToken, bookAmount, execAmount, salt).send();
+  await contract.methods.cancelOrder(bookToken, execToken, bookAmount, execAmount, salt).send({ from, gas: 75000 });
 }
 
 async function cancelOrders(bookToken: string, execToken: string, bookAmounts: bigint[], execAmounts: bigint[], salts: bigint[]): Promise<void> {
+  const from = currentUser();
   const contract = new web3.eth.Contract(SBP2P_ABI, SBP2P_ADDRESS[NETWORK]);
-  await contract.methods.cancelOrders(bookToken, execToken, bookAmounts, execAmounts, salts).send();
+  await contract.methods.cancelOrders(bookToken, execToken, bookAmounts, execAmounts, salts).send({ from, gas: 75000 * salts.length + 25000 });
 }
 
 // db
@@ -131,11 +136,13 @@ let db: { [bookToken: string]: { [execToken: string]: Order[] } } = {};
 let indexes: { [orderId: string]: { bookToken: string, execToken: string } } = {};
 
 function dbLoad(): void {
-  try { const data = JSON.parse(fs.readFileSync('db-' + NETWORK + '.json').toString()); db = data.db; indexes = data.indexes; } catch (e) { }
+  const decodeBigInt = (key: string, value: unknown) => typeof value === 'string' && /-?\d+n/.test(value) ? BigInt(value.slice(0, -1)) : value;
+  try { const data = JSON.parse(fs.readFileSync('db-' + NETWORK + '.json').toString(), decodeBigInt); db = data.db; indexes = data.indexes; } catch (e) { }
 }
 
 function dbSave(): void {
-  try { fs.writeFileSync('db-' + NETWORK + '.json', JSON.stringify({ db, indexes }, undefined, 2)); } catch (e) { }
+  const encodeBigInt = (key: string, value: unknown) => typeof value === 'bigint' ? value.toString() + 'n' : value;
+  try { fs.writeFileSync('db-' + NETWORK + '.json', JSON.stringify({ db, indexes }, encodeBigInt, 2)); } catch (e) { }
 }
 
 dbLoad();
@@ -147,6 +154,20 @@ async function dbInsertOrder(order: Order): Promise<void> {
   const level1 = level0[execToken] || (level0[execToken] = []);
   level1.push({ ...order });
   indexes[orderId] = { bookToken, execToken };
+  dbSave();
+}
+
+async function dbUpdateOrder(orderId: string, freeBookAmount: bigint): Promise<void> {
+  const item = indexes[orderId];
+  if (item === undefined) throw new Error('Unknown order: ' + orderId);
+  const { bookToken, execToken } = item;
+  const level0 = db[bookToken] || (db[bookToken] = {});
+  const level1 = level0[execToken] || (level0[execToken] = []);
+  const index = level1.findIndex((order) => order.orderId == orderId);
+  if (index < 0) throw new Error('Panic');
+  const order = level1[index];
+  if (order === undefined) throw new Error('Panic');
+  order.freeBookAmount = freeBookAmount;
   dbSave();
 }
 
@@ -181,7 +202,7 @@ async function dbBookSumOrders(bookToken: string, maker = ''): Promise<bigint> {
   let sum = 0n;
   for (const level1 of Object.values(level0)) {
     const orders = [...level1.filter((order) => order.maker === (maker || order.maker))];
-    sum += orders.reduce((acc, order) => acc + order.bookAmount, 0n);
+    sum += orders.reduce((acc, order) => acc + order.freeBookAmount, 0n);
   }
   return sum;
 }
@@ -213,6 +234,7 @@ type Order = {
   salt: bigint;
   signature: string;
 
+  freeBookAmount: bigint;
   price: bigint;
   time: number;
 };
@@ -239,12 +261,13 @@ async function createLimitBuyOrder(baseToken: string, quoteToken: string, amount
   if (bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid token: ' + bookToken);
   const bookAmount = amount * price / 1000000000000000000n;
   const execAmount = amount;
+  const freeBookAmount = bookAmount;
   const maker = currentUser();
   const salt = BigInt(randomInt());
   const time = Date.now();
   const orderId = await generateOrderId(bookToken, execToken, bookAmount, execAmount, maker, salt);
   const signature = await sign(orderId);
-  const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price, time };
+  const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price, time, freeBookAmount };
   const available = await availableForLimitOrder(bookToken);
   if (available < bookAmount) throw new Error('Insufficient balance: ' + available);
   await dbInsertOrder(order);
@@ -259,25 +282,26 @@ async function createLimitSellOrder(baseToken: string, quoteToken: string, amoun
   if (bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid token: ' + bookToken);
   const bookAmount = amount;
   const execAmount = amount * price / 1000000000000000000n;
+  const freeBookAmount = bookAmount;
   const maker = currentUser();
   const salt = BigInt(randomInt());
   const time = Date.now();
   const orderId = await generateOrderId(bookToken, execToken, bookAmount, execAmount, maker, salt);
   const signature = await sign(orderId);
-  const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price, time };
+  const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price, time, freeBookAmount };
   const available = await availableForLimitOrder(bookToken);
   if (available < bookAmount) throw new Error('Insufficient balance: ' + available);
   await dbInsertOrder(order);
   return order;
 }
 
-async function cancelLimitOrder(orderId: string): Promise<void> {
+async function cancelLimitOrder(orderId: string, forceOnChain = false): Promise<void> {
   const maker = currentUser();
   const order = await dbLookupOrder(orderId);
   if (order === null) throw new Error('Unknown order: ' + orderId);
   if (order.maker !== maker) throw new Error('Invalid order: ' + orderId);
   const execAmount = await executedBookAmounts(orderId);
-  if (execAmount > 0n) {
+  if (execAmount > 0n || forceOnChain) {
     // the order was partially executed, exposed publicly, and needs to be cancelled on-chain
     const { bookToken, execToken, bookAmount, execAmount, salt } = order;
     await cancelOrder(bookToken, execToken, bookAmount, execAmount, salt);
@@ -288,6 +312,7 @@ async function cancelLimitOrder(orderId: string): Promise<void> {
 type PreparedExecution = {
   bookToken: string;
   execToken: string;
+  orderIds: string[];
   bookAmounts: bigint[];
   execAmounts: bigint[];
   makers: string[];
@@ -301,24 +326,26 @@ async function prepareMarketBuyOrder(baseToken: string, quoteToken: string, amou
   const bookToken = baseToken;
   const execToken = quoteToken;
   const orders = await dbLookupOrders(bookToken, execToken, 'asc');
+  const orderIds = [];
   const bookAmounts = [];
   const execAmounts = [];
   const makers = [];
   const salts = [];
   const signatures = [];
   const available: { [adress: string]: bigint } = {};
-  for (const { bookAmount, execAmount, maker, salt, signature } of orders) {
+  for (const { orderId, bookAmount, execAmount, maker, salt, signature, freeBookAmount } of orders) {
     available[maker] = available[maker] || await availableForLimitOrder(bookToken, maker);
-    if (available[maker] || 0n < 0n) continue;
+    if ((available[maker] || 0n) < 0n) continue;
+    orderIds.push(orderId);
     bookAmounts.push(bookAmount);
     execAmounts.push(execAmount);
     makers.push(maker);
     salts.push(salt);
     signatures.push(signature);
-    amount -= bookAmount;
+    amount -= freeBookAmount;
     if (amount <= 0n) {
-      const lastRequiredBookAmount = bookAmount + amount;
-      return { bookToken, execToken, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount };
+      const lastRequiredBookAmount = freeBookAmount + amount;
+      return { bookToken, execToken, orderIds, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount };
     }
   }
   throw new Error('Insufficient liquidity');
@@ -329,32 +356,35 @@ async function prepareMarketSellOrder(baseToken: string, quoteToken: string, amo
   const bookToken = quoteToken;
   const execToken = baseToken;
   const orders = await dbLookupOrders(bookToken, execToken, 'desc');
+  const orderIds = [];
   const bookAmounts = [];
   const execAmounts = [];
   const makers = [];
   const salts = [];
   const signatures = [];
   const available: { [adress: string]: bigint } = {};
-  for (const { bookAmount, execAmount, maker, salt, signature } of orders) {
+  for (const { orderId, bookAmount, execAmount, maker, salt, signature, freeBookAmount } of orders) {
+    const freeExecAmount = (freeBookAmount * execAmount + (bookAmount - 1n)) / bookAmount;
     available[maker] = available[maker] || await availableForLimitOrder(bookToken, maker);
-    if (available[maker] || 0n < 0n) continue;
+    if ((available[maker] || 0n) < 0n) continue;
+    orderIds.push(orderId);
     bookAmounts.push(bookAmount);
     execAmounts.push(execAmount);
     makers.push(maker);
     salts.push(salt);
     signatures.push(signature);
-    amount -= execAmount;
+    amount -= freeExecAmount;
     if (amount <= 0n) {
-      const lastRequiredExecAmount = execAmount + amount;
+      const lastRequiredExecAmount = freeExecAmount + amount;
       const lastRequiredBookAmount = lastRequiredExecAmount * bookAmount / execAmount;
-      return { bookToken, execToken, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount };
+      return { bookToken, execToken, orderIds, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount };
     }
   }
   throw new Error('Insufficient liquidity');
 }
 
 async function executeMarketOrder(prepared: PreparedExecution): Promise<void> {
-  const { bookToken, execToken, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount } = prepared;
+  const { bookToken, execToken, orderIds, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount } = prepared;
   if (makers.length === 1) {
     const bookAmount = bookAmounts[0] || 0n;
     const execAmount = execAmounts[0] || 0n;
@@ -362,13 +392,28 @@ async function executeMarketOrder(prepared: PreparedExecution): Promise<void> {
     const salt = salts[0] || 0n;
     const signature = signatures[0] || '';
     const requiredBookAmount = lastRequiredBookAmount;
-    const amount = await checkOrderExecution(bookToken, execToken, bookAmount, execAmount, maker, salt, requiredBookAmount);
-    if (amount <= 0n) throw new Error('Order invalidated');
-    await executeOrder(bookToken, execToken, bookAmount, execAmount, maker, salt, signature, requiredBookAmount);
+    const requiredExecAmount = await checkOrderExecution(bookToken, execToken, bookAmount, execAmount, maker, salt, requiredBookAmount);
+    if (requiredExecAmount <= 0n) throw new Error('Preparation invalidated');
+    const value = execToken === '0x0000000000000000000000000000000000000000' ? requiredExecAmount : 0n;
+    await executeOrder(value, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, requiredBookAmount);
   } else {
-    const amount = await checkOrdersExecution(bookToken, execToken, bookAmounts, execAmounts, makers, salts, lastRequiredBookAmount);
-    if (amount <= 0n) throw new Error('Order invalidated');
-    await executeOrders(bookToken, execToken, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount);
+    const requiredExecAmount = await checkOrdersExecution(bookToken, execToken, bookAmounts, execAmounts, makers, salts, lastRequiredBookAmount);
+    if (requiredExecAmount <= 0n) throw new Error('Preparation invalidated');
+    const value = execToken === '0x0000000000000000000000000000000000000000' ? requiredExecAmount : 0n;
+    await executeOrders(value, bookToken, execToken, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount);
+  }
+  for (let i = 0; i < orderIds.length; i++) {
+    const orderId = orderIds[i];
+    if (orderId === undefined) throw new Error('Panic');
+    const bookAmount = bookAmounts[i];
+    if (bookAmount === undefined) throw new Error('Panic');
+    const executedBookAmount = await executedBookAmounts(orderId);
+    if (executedBookAmount >= bookAmount) {
+      await dbRemoveOrder(orderId);
+    } else {
+      const freeBookAmount = bookAmount - executedBookAmount;
+      await dbUpdateOrder(orderId, freeBookAmount);
+    }
   }
 }
 
@@ -376,12 +421,33 @@ async function executeMarketOrder(prepared: PreparedExecution): Promise<void> {
 
 async function main(args: string[]): Promise<void> {
   const privateKey = args[2];
-  if (privateKey === undefined) throw new Error('Missing private key');
+  if (privateKey === undefined) throw new Error('Missing privateKey');
+  const command = args[3];
+
   web3 = initWeb3(privateKey);
+
   const ETH = '0x0000000000000000000000000000000000000000';
   const TEST = '0xfC0d9D4e5821Ee772e6c6dE75256f5c96E545DD0';
-  const order = await createLimitSellOrder(TEST, ETH, 5000000000000000000n, 1000000000000000000n);
-  console.log(order);
+
+  if (command === 'unlock') {
+    await enableOrderCreation(TEST);
+  }
+  else
+  if (command === 'create') {
+    const order = await createLimitSellOrder(TEST, ETH, 6000000000000000000n, 100000000000000n); // 6 TEST for 0.0001 ETH
+    console.log(order);
+  }
+  else
+  if (command === 'cancel') {
+    const orderId = args[4];
+    if (orderId === undefined) throw new Error('Missing orderId');
+    await cancelLimitOrder(orderId, true);
+  }
+  else
+  if (command === 'execute') {
+    const prepared = await prepareMarketBuyOrder(TEST, ETH, 9000000000000000000n); // 9 TEST
+    await executeMarketOrder(prepared);
+  }
 }
 
 entrypoint(main);
