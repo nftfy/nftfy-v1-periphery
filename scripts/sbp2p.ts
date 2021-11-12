@@ -23,7 +23,6 @@ function randomInt(limit = Number.MAX_SAFE_INTEGER): number {
 
 type Network = 'mainnet' | 'kovan';
 
-const PRIVATE_KEY = process.env['PRIVATE_KEY'] || '';
 const INFURA_PROJECT_ID = process.env['INFURA_PROJECT_ID'] || '';
 
 const HTTP_PROVIDER_URLS: { [key in Network]: string } = {
@@ -38,14 +37,27 @@ function _network(network: string): Network {
 
 const NETWORK = _network(process.env['NETWORK'] || 'kovan');
 
-function initWeb3(): Web3 {
+function initWeb3(privateKey: string): Web3 {
   const web3 = new Web3(HTTP_PROVIDER_URLS[NETWORK]);
-  const account = web3.eth.accounts.privateKeyToAccount(PRIVATE_KEY);
+  const account = web3.eth.accounts.privateKeyToAccount(privateKey);
   web3.eth.accounts.wallet.add(account);
   return web3;
 }
 
-const web3 = initWeb3();
+let web3: Web3;
+
+function currentUser(): string {
+  const account = web3.eth.accounts.wallet[0];
+  if (account === undefined) throw new Error('Panic');
+  return account.address;
+}
+
+async function sign(hash: string): Promise<string> {
+  const account = web3.eth.accounts.wallet[0];
+  if (account === undefined) throw new Error('Panic');
+  const { signature } = await web3.eth.accounts.sign(hash, account.privateKey);
+  return signature
+}
 
 // abi
 
@@ -205,21 +217,21 @@ type Order = {
   time: number;
 };
 
-async function availableForLimitOrder(bookToken: string): Promise<bigint> {
-  const account = web3.eth.accounts.wallet[0];
-  if (account === undefined) throw new Error('Panic');
+async function enableOrderCreation(bookToken: string): Promise<void> {
   if (bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid token: ' + bookToken);
-  const maker = account.address;
+  await approve(bookToken, SBP2P_ADDRESS[NETWORK], 2n ** 256n - 1n);
+}
+
+async function availableForLimitOrder(bookToken: string, maker = currentUser()): Promise<bigint> {
+  if (bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid token: ' + bookToken);
   const balance = await balanceOf(bookToken, maker);
   const approved = await allowance(bookToken, maker, SBP2P_ADDRESS[NETWORK]);
   const free = balance < approved ? balance : approved;
   const used = await dbBookSumOrders(bookToken, maker);
-  return free > used ? free - used : 0n;
+  return free >= used ? free - used : -1n;
 }
 
 async function createLimitBuyOrder(baseToken: string, quoteToken: string, amount: bigint, price: bigint): Promise<Order> {
-  const account = web3.eth.accounts.wallet[0];
-  if (account === undefined) throw new Error('Panic');
   if (amount <= 0n) throw new Error('Invalid amount: ' + amount);
   if (price <= 0n) throw new Error('Invalid price: ' + price);
   const bookToken = quoteToken;
@@ -227,11 +239,11 @@ async function createLimitBuyOrder(baseToken: string, quoteToken: string, amount
   if (bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid token: ' + bookToken);
   const bookAmount = amount * price / 1000000000000000000n;
   const execAmount = amount;
-  const maker = account.address;
+  const maker = currentUser();
   const salt = BigInt(randomInt());
   const time = Date.now();
   const orderId = await generateOrderId(bookToken, execToken, bookAmount, execAmount, maker, salt);
-  const { signature } = await web3.eth.accounts.sign(orderId, PRIVATE_KEY);
+  const signature = await sign(orderId);
   const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price, time };
   const available = await availableForLimitOrder(bookToken);
   if (available < bookAmount) throw new Error('Insufficient balance: ' + available);
@@ -240,8 +252,6 @@ async function createLimitBuyOrder(baseToken: string, quoteToken: string, amount
 }
 
 async function createLimitSellOrder(baseToken: string, quoteToken: string, amount: bigint, price: bigint): Promise<Order> {
-  const account = web3.eth.accounts.wallet[0];
-  if (account === undefined) throw new Error('Panic');
   if (amount <= 0n) throw new Error('Invalid amount: ' + amount);
   if (price <= 0n) throw new Error('Invalid price: ' + price);
   const bookToken = baseToken;
@@ -249,11 +259,11 @@ async function createLimitSellOrder(baseToken: string, quoteToken: string, amoun
   if (bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid token: ' + bookToken);
   const bookAmount = amount;
   const execAmount = amount * price / 1000000000000000000n;
-  const maker = account.address;
+  const maker = currentUser();
   const salt = BigInt(randomInt());
   const time = Date.now();
   const orderId = await generateOrderId(bookToken, execToken, bookAmount, execAmount, maker, salt);
-  const { signature } = await web3.eth.accounts.sign(orderId, PRIVATE_KEY);
+  const signature = await sign(orderId);
   const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price, time };
   const available = await availableForLimitOrder(bookToken);
   if (available < bookAmount) throw new Error('Insufficient balance: ' + available);
@@ -262,13 +272,13 @@ async function createLimitSellOrder(baseToken: string, quoteToken: string, amoun
 }
 
 async function cancelLimitOrder(orderId: string): Promise<void> {
-  const account = web3.eth.accounts.wallet[0];
-  if (account === undefined) throw new Error('Panic');
+  const maker = currentUser();
   const order = await dbLookupOrder(orderId);
   if (order === null) throw new Error('Unknown order: ' + orderId);
-  if (order.maker !== account.address) throw new Error('Invalid order: ' + orderId);
+  if (order.maker !== maker) throw new Error('Invalid order: ' + orderId);
   const execAmount = await executedBookAmounts(orderId);
   if (execAmount > 0n) {
+    // the order was partially executed, exposed publicly, and needs to be cancelled on-chain
     const { bookToken, execToken, bookAmount, execAmount, salt } = order;
     await cancelOrder(bookToken, execToken, bookAmount, execAmount, salt);
   }
@@ -296,7 +306,10 @@ async function prepareMarketBuyOrder(baseToken: string, quoteToken: string, amou
   const makers = [];
   const salts = [];
   const signatures = [];
+  const available: { [adress: string]: bigint } = {};
   for (const { bookAmount, execAmount, maker, salt, signature } of orders) {
+    available[maker] = available[maker] || await availableForLimitOrder(bookToken, maker);
+    if (available[maker] || 0n < 0n) continue;
     bookAmounts.push(bookAmount);
     execAmounts.push(execAmount);
     makers.push(maker);
@@ -321,7 +334,10 @@ async function prepareMarketSellOrder(baseToken: string, quoteToken: string, amo
   const makers = [];
   const salts = [];
   const signatures = [];
+  const available: { [adress: string]: bigint } = {};
   for (const { bookAmount, execAmount, maker, salt, signature } of orders) {
+    available[maker] = available[maker] || await availableForLimitOrder(bookToken, maker);
+    if (available[maker] || 0n < 0n) continue;
     bookAmounts.push(bookAmount);
     execAmounts.push(execAmount);
     makers.push(maker);
@@ -337,9 +353,31 @@ async function prepareMarketSellOrder(baseToken: string, quoteToken: string, amo
   throw new Error('Insufficient liquidity');
 }
 
+async function executeMarketOrder(prepared: PreparedExecution): Promise<void> {
+  const { bookToken, execToken, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount } = prepared;
+  if (makers.length === 1) {
+    const bookAmount = bookAmounts[0] || 0n;
+    const execAmount = execAmounts[0] || 0n;
+    const maker = makers[0] || '';
+    const salt = salts[0] || 0n;
+    const signature = signatures[0] || '';
+    const requiredBookAmount = lastRequiredBookAmount;
+    const amount = await checkOrderExecution(bookToken, execToken, bookAmount, execAmount, maker, salt, requiredBookAmount);
+    if (amount <= 0n) throw new Error('Order invalidated');
+    await executeOrder(bookToken, execToken, bookAmount, execAmount, maker, salt, signature, requiredBookAmount);
+  } else {
+    const amount = await checkOrdersExecution(bookToken, execToken, bookAmounts, execAmounts, makers, salts, lastRequiredBookAmount);
+    if (amount <= 0n) throw new Error('Order invalidated');
+    await executeOrders(bookToken, execToken, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount);
+  }
+}
+
 // main
 
 async function main(args: string[]): Promise<void> {
+  const privateKey = args[2];
+  if (privateKey === undefined) throw new Error('Missing private key');
+  web3 = initWeb3(privateKey);
   const ETH = '0x0000000000000000000000000000000000000000';
   const TEST = '0xfC0d9D4e5821Ee772e6c6dE75256f5c96E545DD0';
   const order = await createLimitSellOrder(TEST, ETH, 5000000000000000000n, 1000000000000000000n);
