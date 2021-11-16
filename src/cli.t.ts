@@ -1,7 +1,22 @@
 import fs from 'fs';
 import Web3 from 'web3';
 
-import { Order, Db, enableOrderCreation, createLimitSellOrder, cancelLimitOrder, prepareMarketBuyOrder, executeMarketOrder } from './index';
+import {
+  Order,
+  Api,
+  Db,
+  enableOrderCreation,
+  createLimitSellOrder,
+  cancelLimitOrder,
+  executeMarketOrder,
+  apiAvailableForLimitOrder,
+  apiInsertOrder,
+  apiRemoveOrder,
+  apiLookupOrder,
+  apiPrepareMarketBuyOrder,
+  apiPrepareMarketSellOrder,
+  apiRegisterMarketOrder,
+} from './index';
 
 // runtime
 
@@ -148,6 +163,15 @@ async function main(args: string[]): Promise<void> {
 
   const web3 = initWeb3(privateKey);
   const db = createDb();
+  const api: Api = {
+    availableForLimitOrder: (bookToken, maker) => apiAvailableForLimitOrder(web3, db, bookToken, maker),
+    insertOrder: (order) => apiInsertOrder(db, order),
+    removeOrder: (orderId) => apiRemoveOrder(db, orderId),
+    lookupOrder: (orderId) => apiLookupOrder(db, orderId),
+    prepareMarketBuyOrder: (baseToken, quoteToken, amount) => apiPrepareMarketBuyOrder(web3, db, baseToken, quoteToken, amount),
+    prepareMarketSellOrder: (baseToken, quoteToken, amount) => apiPrepareMarketSellOrder(web3, db, baseToken, quoteToken, amount),
+    registerMarketOrder: (prepared) => apiRegisterMarketOrder(web3, db, prepared),
+  };
 
   const ETH = '0x0000000000000000000000000000000000000000';
   const TEST = '0xfC0d9D4e5821Ee772e6c6dE75256f5c96E545DD0';
@@ -157,19 +181,19 @@ async function main(args: string[]): Promise<void> {
   }
   else
   if (command === 'create') {
-    const order = await createLimitSellOrder(web3, db, TEST, ETH, 6000000000000000000n, 100000000000000n); // 6 TEST for 0.0001 ETH
+    const order = await createLimitSellOrder(web3, api, TEST, ETH, 6000000000000000000n, 100000000000000n); // 6 TEST for 0.0001 ETH
     console.log(order);
   }
   else
   if (command === 'cancel') {
     const orderId = args[4];
     if (orderId === undefined) throw new Error('Missing orderId');
-    await cancelLimitOrder(web3, db, orderId, true);
+    await cancelLimitOrder(web3, api, orderId, true);
   }
   else
   if (command === 'execute') {
-    const prepared = await prepareMarketBuyOrder(web3, db, TEST, ETH, 9000000000000000000n); // 9 TEST
-    await executeMarketOrder(web3, db, prepared);
+    const prepared = await api.prepareMarketBuyOrder(TEST, ETH, 9000000000000000000n); // 9 TEST
+    await executeMarketOrder(web3, api, prepared);
   }
 }
 

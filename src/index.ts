@@ -33,6 +33,16 @@ export type PreparedExecution = {
   lastRequiredBookAmount: bigint;
 };
 
+export interface Api {
+  availableForLimitOrder(bookToken: string, maker: string): Promise<bigint>;
+  insertOrder(order: Order): Promise<void>;
+  removeOrder(orderId: string): Promise<void>;
+  lookupOrder(orderId: string): Promise<Order | null>;
+  prepareMarketBuyOrder(baseToken: string, quoteToken: string, amount: bigint): Promise<PreparedExecution>;
+  prepareMarketSellOrder(baseToken: string, quoteToken: string, amount: bigint): Promise<PreparedExecution>;
+  registerMarketOrder(prepared: PreparedExecution): Promise<void>;
+}
+
 export interface Db {
   insertOrder(order: Order): Promise<void>;
   removeOrder(orderId: string): Promise<void>;
@@ -59,17 +69,16 @@ async function sign(web3: Web3, hash: string): Promise<string> {
   return signature
 }
 
+async function recover(web3: Web3, hash: string, signature: string): Promise<string> {
+  return web3.eth.accounts.recover(hash, signature);
+}
+
 function generateSalt(duration = DEFAULT_ORDER_DURATION, startTime = Date.now(), random = randomInt()): bigint {
   const endTime = startTime + duration;
   return BigInt(random) << 128n | BigInt(Math.floor(startTime / 1000)) << 64n | BigInt(Math.floor(endTime / 1000));
 }
 
-export async function enableOrderCreation(web3: Web3, bookToken: string): Promise<void> {
-  if (bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid token: ' + bookToken);
-  await approve(web3, bookToken, ADDRESS, 2n ** 256n - 1n);
-}
-
-export async function availableForLimitOrder(web3: Web3, db: Db, bookToken: string, maker = currentUser(web3)): Promise<bigint> {
+async function availableForLimitOrder(web3: Web3, db: Db, bookToken: string, maker = currentUser(web3)): Promise<bigint> {
   if (bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid token: ' + bookToken);
   const balance = await balanceOf(web3, bookToken, maker);
   const approved = await allowance(web3, bookToken, maker, ADDRESS);
@@ -78,7 +87,31 @@ export async function availableForLimitOrder(web3: Web3, db: Db, bookToken: stri
   return free >= used ? free - used : -1n;
 }
 
-export async function createLimitBuyOrder(web3: Web3, db: Db, baseToken: string, quoteToken: string, amount: bigint, price: bigint, duration = DEFAULT_ORDER_DURATION): Promise<Order> {
+async function registerMarketOrder(web3: Web3, db: Db, prepared: PreparedExecution): Promise<void> {
+  const { orderIds, bookAmounts } = prepared;
+  for (let i = 0; i < orderIds.length; i++) {
+    const orderId = orderIds[i];
+    if (orderId === undefined) throw new Error('Panic');
+    const bookAmount = bookAmounts[i];
+    if (bookAmount === undefined) throw new Error('Panic');
+    const executedBookAmount = await executedBookAmounts(web3, orderId);
+    if (executedBookAmount >= bookAmount) {
+      await db.removeOrder(orderId);
+    } else {
+      const freeBookAmount = bookAmount - executedBookAmount;
+      await db.updateOrder(orderId, freeBookAmount);
+    }
+  }
+}
+
+// api used by the frontend
+
+export async function enableOrderCreation(web3: Web3, bookToken: string): Promise<void> {
+  if (bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid token: ' + bookToken);
+  await approve(web3, bookToken, ADDRESS, 2n ** 256n - 1n);
+}
+
+export async function createLimitBuyOrder(web3: Web3, api: Api, baseToken: string, quoteToken: string, amount: bigint, price: bigint, duration = DEFAULT_ORDER_DURATION): Promise<Order> {
   if (amount <= 0n) throw new Error('Invalid amount: ' + amount);
   if (price <= 0n) throw new Error('Invalid price: ' + price);
   const bookToken = quoteToken;
@@ -93,13 +126,13 @@ export async function createLimitBuyOrder(web3: Web3, db: Db, baseToken: string,
   const orderId = await generateOrderId(web3, bookToken, execToken, bookAmount, execAmount, maker, salt);
   const signature = await sign(web3, orderId);
   const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, freeBookAmount, price, time, duration };
-  const available = await availableForLimitOrder(web3, db, bookToken);
+  const available = await api.availableForLimitOrder(bookToken, maker);
   if (available < bookAmount) throw new Error('Insufficient balance: ' + available);
-  await db.insertOrder(order);
+  await api.insertOrder(order);
   return order;
 }
 
-export async function createLimitSellOrder(web3: Web3, db: Db, baseToken: string, quoteToken: string, amount: bigint, price: bigint, duration = DEFAULT_ORDER_DURATION): Promise<Order> {
+export async function createLimitSellOrder(web3: Web3, api: Api, baseToken: string, quoteToken: string, amount: bigint, price: bigint, duration = DEFAULT_ORDER_DURATION): Promise<Order> {
   if (amount <= 0n) throw new Error('Invalid amount: ' + amount);
   if (price <= 0n) throw new Error('Invalid price: ' + price);
   const bookToken = baseToken;
@@ -114,15 +147,15 @@ export async function createLimitSellOrder(web3: Web3, db: Db, baseToken: string
   const orderId = await generateOrderId(web3, bookToken, execToken, bookAmount, execAmount, maker, salt);
   const signature = await sign(web3, orderId);
   const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, freeBookAmount, price, time, duration };
-  const available = await availableForLimitOrder(web3, db, bookToken);
+  const available = await api.availableForLimitOrder(bookToken, maker);
   if (available < bookAmount) throw new Error('Insufficient balance: ' + available);
-  await db.insertOrder(order);
+  await api.insertOrder(order);
   return order;
 }
 
-export async function cancelLimitOrder(web3: Web3, db: Db, orderId: string, forceOnChain = false): Promise<void> {
+export async function cancelLimitOrder(web3: Web3, api: Api, orderId: string, forceOnChain = false): Promise<void> {
   const maker = currentUser(web3);
-  const order = await db.lookupOrder(orderId);
+  const order = await api.lookupOrder(orderId);
   if (order === null) throw new Error('Unknown order: ' + orderId);
   if (order.maker !== maker) throw new Error('Invalid order: ' + orderId);
   const execAmount = await executedBookAmounts(web3, orderId);
@@ -131,10 +164,10 @@ export async function cancelLimitOrder(web3: Web3, db: Db, orderId: string, forc
     const { bookToken, execToken, bookAmount, execAmount, salt } = order;
     await cancelOrder(web3, bookToken, execToken, bookAmount, execAmount, salt);
   }
-  await db.removeOrder(orderId);
+  await api.removeOrder(orderId);
 }
 
-export async function prepareMarketBuyOrder(web3: Web3, db: Db, baseToken: string, quoteToken: string, amount: bigint): Promise<PreparedExecution> {
+async function prepareMarketBuyOrder(web3: Web3, db: Db, baseToken: string, quoteToken: string, amount: bigint): Promise<PreparedExecution> {
   if (amount <= 0n) throw new Error('Invalid amount: ' + amount);
   const bookToken = baseToken;
   const execToken = quoteToken;
@@ -165,7 +198,7 @@ export async function prepareMarketBuyOrder(web3: Web3, db: Db, baseToken: strin
   throw new Error('Insufficient liquidity');
 }
 
-export async function prepareMarketSellOrder(web3: Web3, db: Db, baseToken: string, quoteToken: string, amount: bigint): Promise<PreparedExecution> {
+async function prepareMarketSellOrder(web3: Web3, db: Db, baseToken: string, quoteToken: string, amount: bigint): Promise<PreparedExecution> {
   if (amount <= 0n) throw new Error('Invalid amount: ' + amount);
   const bookToken = quoteToken;
   const execToken = baseToken;
@@ -198,7 +231,7 @@ export async function prepareMarketSellOrder(web3: Web3, db: Db, baseToken: stri
   throw new Error('Insufficient liquidity');
 }
 
-export async function executeMarketOrder(web3: Web3, db: Db, prepared: PreparedExecution): Promise<void> {
+export async function executeMarketOrder(web3: Web3, api: Api, prepared: PreparedExecution): Promise<void> {
   const { bookToken, execToken, orderIds, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount } = prepared;
   if (makers.length === 1) {
     const bookAmount = bookAmounts[0] || 0n;
@@ -217,17 +250,43 @@ export async function executeMarketOrder(web3: Web3, db: Db, prepared: PreparedE
     const value = execToken === '0x0000000000000000000000000000000000000000' ? requiredExecAmount : 0n;
     await executeOrders(web3, value, bookToken, execToken, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount);
   }
-  for (let i = 0; i < orderIds.length; i++) {
-    const orderId = orderIds[i];
-    if (orderId === undefined) throw new Error('Panic');
-    const bookAmount = bookAmounts[i];
-    if (bookAmount === undefined) throw new Error('Panic');
-    const executedBookAmount = await executedBookAmounts(web3, orderId);
-    if (executedBookAmount >= bookAmount) {
-      await db.removeOrder(orderId);
-    } else {
-      const freeBookAmount = bookAmount - executedBookAmount;
-      await db.updateOrder(orderId, freeBookAmount);
-    }
-  }
+  await api.registerMarketOrder(prepared);
 }
+
+// api used by the backend
+
+export async function apiAvailableForLimitOrder(web3: Web3, db: Db, bookToken: string, maker: string): Promise<bigint> {
+  // TODO validate request
+  return await availableForLimitOrder(web3, db, bookToken, maker);
+}
+
+export async function apiInsertOrder(db: Db, order: Order): Promise<void> {
+  // TODO validate request
+  await db.insertOrder(order);
+}
+
+export async function apiRemoveOrder(db: Db, orderId: string): Promise<void> {
+  // TODO validate request
+  await db.removeOrder(orderId);
+}
+
+export async function apiLookupOrder(db: Db, orderId: string): Promise<Order | null> {
+  // TODO validate request
+  return await db.lookupOrder(orderId);
+}
+
+export async function apiPrepareMarketBuyOrder(web3: Web3, db: Db, baseToken: string, quoteToken: string, amount: bigint): Promise<PreparedExecution> {
+  // TODO validate request
+  return await prepareMarketBuyOrder(web3, db, baseToken, quoteToken, amount);
+}
+
+export async function apiPrepareMarketSellOrder(web3: Web3, db: Db, baseToken: string, quoteToken: string, amount: bigint): Promise<PreparedExecution> {
+  // TODO validate request
+  return await prepareMarketSellOrder(web3, db, baseToken, quoteToken, amount);
+}
+
+export async function apiRegisterMarketOrder(web3: Web3, db: Db, prepared: PreparedExecution): Promise<void> {
+  // TODO validate request
+  return await registerMarketOrder(web3, db, prepared);
+}
+
