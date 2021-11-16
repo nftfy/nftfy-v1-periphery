@@ -3,6 +3,8 @@ import Web3 from 'web3';
 import { balanceOf, allowance, approve } from './token';
 import { ADDRESS, executedBookAmounts, generateOrderId, checkOrderExecution, checkOrdersExecution, executeOrder, executeOrders, cancelOrder, cancelOrders } from './orderbook';
 
+const DEFAULT_ORDER_DURATION = 100 * 365 * 24 * 60 * 60 * 1000; // 100 years
+
 export type Order = {
   orderId: string;
   bookToken: string;
@@ -40,23 +42,21 @@ export interface Db {
   bookSumOrders(bookToken: string, maker?: string): Promise<bigint>;
 }
 
+function randomInt(limit = Number.MAX_SAFE_INTEGER): number {
+  return Math.floor(Math.random() * limit);
+}
+
 function currentUser(web3: Web3): string {
   const account = web3.eth.accounts.wallet[0];
-  if (account === undefined) throw new Error('Panic');
+  if (account === undefined) throw new Error('No account set');
   return account.address;
 }
 
 async function sign(web3: Web3, hash: string): Promise<string> {
   const account = web3.eth.accounts.wallet[0];
-  if (account === undefined) throw new Error('Panic');
+  if (account === undefined) throw new Error('No account set');
   const { signature } = await web3.eth.accounts.sign(hash, account.privateKey);
   return signature
-}
-
-const DEFAULT_ORDER_DURATION = 100 * 365 * 24 * 60 * 60 * 1000; // 100 years
-
-function randomInt(limit = Number.MAX_SAFE_INTEGER): number {
-  return Math.floor(Math.random() * limit);
 }
 
 function generateSalt(duration = DEFAULT_ORDER_DURATION, startTime = Date.now(), random = randomInt()): bigint {
