@@ -1,7 +1,7 @@
 import Web3 from 'web3';
 import { AbiItem } from 'web3-utils';
 
-const ADDRESS = '0x9e2873c1c89696987F671861901A06Ad7Cb97f8C';
+export const ADDRESS = '0x9e2873c1c89696987F671861901A06Ad7Cb97f8C';
 
 const ABI: AbiItem[] = [
   {
@@ -115,27 +115,27 @@ const ABI: AbiItem[] = [
   },
 ];
 
-async function executedBookAmounts(web3: Web3, orderId: string): Promise<bigint> {
+export async function executedBookAmounts(web3: Web3, orderId: string): Promise<bigint> {
   const contract = new web3.eth.Contract(ABI, ADDRESS);
   return BigInt(await contract.methods.executedBookAmounts(orderId).call());
 }
 
-async function generateOrderId(web3: Web3, bookToken: string, execToken: string, bookAmount: bigint, execAmount: bigint, maker: string, salt: bigint): Promise<string> {
+export async function generateOrderId(web3: Web3, bookToken: string, execToken: string, bookAmount: bigint, execAmount: bigint, maker: string, salt: bigint): Promise<string> {
   const contract = new web3.eth.Contract(ABI, ADDRESS);
   return await contract.methods.generateOrderId(bookToken, execToken, bookAmount, execAmount, maker, salt).call();
 }
 
-async function checkOrderExecution(web3: Web3, bookToken: string, execToken: string, bookAmount: bigint, execAmount: bigint, maker: string, salt: bigint, requiredBookAmount: bigint): Promise<bigint> {
+export async function checkOrderExecution(web3: Web3, bookToken: string, execToken: string, bookAmount: bigint, execAmount: bigint, maker: string, salt: bigint, requiredBookAmount: bigint): Promise<bigint> {
   const contract = new web3.eth.Contract(ABI, ADDRESS);
   return BigInt(await contract.methods.checkOrderExecution(bookToken, execToken, bookAmount, execAmount, maker, salt, requiredBookAmount).call());
 }
 
-async function checkOrdersExecution(web3: Web3, bookToken: string, execToken: string, bookAmounts: bigint[], execAmounts: bigint[], makers: string[], salts: bigint[], lastRequiredBookAmount: bigint): Promise<bigint> {
+export async function checkOrdersExecution(web3: Web3, bookToken: string, execToken: string, bookAmounts: bigint[], execAmounts: bigint[], makers: string[], salts: bigint[], lastRequiredBookAmount: bigint): Promise<bigint> {
   const contract = new web3.eth.Contract(ABI, ADDRESS);
   return BigInt(await contract.methods.checkOrdersExecution(bookToken, execToken, bookAmounts, execAmounts, makers, salts, lastRequiredBookAmount).call());
 }
 
-async function executeOrder(web3: Web3, value: bigint, bookToken: string, execToken: string, bookAmount: bigint, execAmount: bigint, maker: string, salt: bigint, signature: string, requiredBookAmount: bigint, from = ''): Promise<void> {
+export async function executeOrder(web3: Web3, value: bigint, bookToken: string, execToken: string, bookAmount: bigint, execAmount: bigint, maker: string, salt: bigint, signature: string, requiredBookAmount: bigint, from = ''): Promise<void> {
   if (from === '') {
     const account = web3.eth.accounts.wallet[0];
     if (account === undefined) throw new Error('No account set');
@@ -145,7 +145,7 @@ async function executeOrder(web3: Web3, value: bigint, bookToken: string, execTo
   await contract.methods.executeOrder(bookToken, execToken, bookAmount, execAmount, maker, salt, signature, requiredBookAmount).send({ from, value: String(value), gas: 150000 });
 }
 
-async function executeOrders(web3: Web3, value: bigint, bookToken: string, execToken: string, bookAmounts: bigint[], execAmounts: bigint[], makers: string[], salts: bigint[], signatures: string[], lastRequiredBookAmount: bigint, from = ''): Promise<void> {
+export async function executeOrders(web3: Web3, value: bigint, bookToken: string, execToken: string, bookAmounts: bigint[], execAmounts: bigint[], makers: string[], salts: bigint[], signatures: string[], lastRequiredBookAmount: bigint, from = ''): Promise<void> {
   if (from === '') {
     const account = web3.eth.accounts.wallet[0];
     if (account === undefined) throw new Error('No account set');
@@ -156,7 +156,7 @@ async function executeOrders(web3: Web3, value: bigint, bookToken: string, execT
   await contract.methods.executeOrders(bookToken, execToken, bookAmounts, execAmounts, makers, salts, siglist, lastRequiredBookAmount).send({ from, value: String(value), gas: 150000 * salts.length + 50000 });
 }
 
-async function cancelOrder(web3: Web3, bookToken: string, execToken: string, bookAmount: bigint, execAmount: bigint, salt: bigint, from = ''): Promise<void> {
+export async function cancelOrder(web3: Web3, bookToken: string, execToken: string, bookAmount: bigint, execAmount: bigint, salt: bigint, from = ''): Promise<void> {
   if (from === '') {
     const account = web3.eth.accounts.wallet[0];
     if (account === undefined) throw new Error('No account set');
@@ -166,7 +166,7 @@ async function cancelOrder(web3: Web3, bookToken: string, execToken: string, boo
   await contract.methods.cancelOrder(bookToken, execToken, bookAmount, execAmount, salt).send({ from, gas: 75000 });
 }
 
-async function cancelOrders(web3: Web3, bookToken: string, execToken: string, bookAmounts: bigint[], execAmounts: bigint[], salts: bigint[], from = ''): Promise<void> {
+export async function cancelOrders(web3: Web3, bookToken: string, execToken: string, bookAmounts: bigint[], execAmounts: bigint[], salts: bigint[], from = ''): Promise<void> {
   if (from === '') {
     const account = web3.eth.accounts.wallet[0];
     if (account === undefined) throw new Error('No account set');
