@@ -1,4 +1,6 @@
 import Web3 from 'web3';
+import { PromiEvent } from 'web3-core';
+import { Contract } from 'web3-eth-contract';
 import { AbiItem } from 'web3-utils';
 
 const ABI: AbiItem[] = [
@@ -31,6 +33,19 @@ const ABI: AbiItem[] = [
   },
 ];
 
+function currentUser(web3: Web3): string {
+  const account = web3.eth.accounts.wallet[0];
+  if (account === undefined) throw new Error('No account set');
+  return account.address;
+}
+
+async function filterTxId(event: PromiEvent<Contract>): Promise<string> {
+  let txId: string | null = null;
+  await event.on('transactionHash', (hash: string) => { txId = hash; });
+  if (txId === null) throw new Error('Unknown txId');
+  return txId;
+}
+
 export async function balanceOf(web3: Web3, token: string, account: string): Promise<bigint> {
   const contract = new web3.eth.Contract(ABI, token);
   return BigInt(await contract.methods.balanceOf(account).call());
@@ -41,12 +56,7 @@ export async function allowance(web3: Web3, token: string, account: string, spen
   return BigInt(await contract.methods.allowance(account, spender).call());
 }
 
-export async function approve(web3: Web3, token: string, spender: string, amount: bigint, from = ''): Promise<void> {
-  if (from === '') {
-    const account = web3.eth.accounts.wallet[0];
-    if (account === undefined) throw new Error('No account set');
-    from = account.address;
-  }
+export async function approve(web3: Web3, token: string, spender: string, amount: bigint, from = currentUser(web3)): Promise<string> {
   const contract = new web3.eth.Contract(ABI, token);
-  await contract.methods.approve(spender, amount).send({ from, gas: 75000 });
+  return await filterTxId(contract.methods.approve(spender, amount).send({ from, gas: 75000 }));
 }
