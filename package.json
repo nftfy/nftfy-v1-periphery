@@ -2,6 +2,8 @@
   "name": "@nftfyorg/v1-periphery",
   "version": "1.0.2",
   "description": "Nftfy V1 Periphery Smart Contracts",
+  "main": "/index.js",
+  "types": "/index.d.ts",
   "files": [
     "/index.js",
     "/index.d.ts",
