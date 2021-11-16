@@ -1,12 +1,14 @@
 {
   "name": "@nftfyorg/v1-periphery",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Nftfy V1 Periphery Smart Contracts",
   "files": [
+    "/index.js",
+    "/index.d.ts",
+    "/lib/**/*.js",
+    "/lib/**/*.d.ts",
     "/contracts/**/*.sol",
-    "/build/contracts/*.json",
-    "/build/*.d.ts",
-    "/build/*.js"
+    "/build/contracts/*.json"
   ],
   "peerDependencies": {
     "web3": "^1.6.0"
