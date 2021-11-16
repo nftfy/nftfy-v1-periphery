@@ -1,12 +1,13 @@
 {
-  "name": "nftfy-v1-periphery",
+  "name": "@nftfy/v1-periphery",
   "version": "1.0.0",
   "description": "Nftfy V1 Periphery Smart Contracts",
   "files": [
     "/contracts/**/*.sol",
-    "/build/contracts/*.json"
+    "/build/contracts/*.json",
+    "/build/*.js"
   ],
-  "dependencies": {
+  "peerDependencies": {
     "web3": "^1.6.0"
   },
   "devDependencies": {
@@ -23,9 +24,13 @@
     "deploy": "truffle migrate",
     "deploy:mainnet": "truffle migrate --network mainnet",
     "deploy:kovan": "truffle migrate --network kovan",
+    "prepublishOnly": "npm run build && npm run tsc",
     "source": "truffle-flattener contracts/*.sol | sed '/^.*SPDX-License-Identifier:.*$/d' | sed '1s/^/\\/\\/ SPDX-License-Identifier: GPL-3.0-only\\n\\n/' > Contracts.sol",
     "test": "truffle test",
     "tsc": "tsc"
+  },
+  "engines": {
+    "node": ">=14"
   },
   "repository": {
     "type": "git",
