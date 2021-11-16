@@ -5,7 +5,7 @@
     "module": "commonjs",
     "esModuleInterop": true,
 
-    "outDir": "./lib/",
+    "outDir": "./build/",
     "declaration": true,
     "removeComments": true,
     "noEmitOnError": true,
