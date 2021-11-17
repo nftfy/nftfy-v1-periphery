@@ -54,6 +54,7 @@ async function main(args: string[]): Promise<void> {
   else
   if (command === 'execute') {
     const prepared = await api.prepareMarketBuyOrder(TEST, ETH, 9000000000000000000n); // 9 TEST
+    if (prepared === null) throw new Error('Insufficient liquidity');
     await executeMarketOrder(web3, api, prepared);
   }
 }

@@ -92,7 +92,7 @@ export async function cancelLimitOrder(web3: Web3, api: Api, orderId: string, fo
     const { bookToken, execToken, bookAmount, execAmount, salt } = order;
     await cancelOrder(web3, bookToken, execToken, bookAmount, execAmount, salt);
   }
-  await api.removeOrder(orderId);
+  await api.updateOrders([orderId]);
 }
 
 export async function executeMarketOrder(web3: Web3, api: Api, prepared: PreparedExecution): Promise<void> {
@@ -114,5 +114,5 @@ export async function executeMarketOrder(web3: Web3, api: Api, prepared: Prepare
     const value = execToken === '0x0000000000000000000000000000000000000000' ? requiredExecAmount : 0n;
     await executeOrders(web3, value, bookToken, execToken, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount);
   }
-  await api.registerMarketOrder(prepared);
+  await api.updateOrders(orderIds);
 }
