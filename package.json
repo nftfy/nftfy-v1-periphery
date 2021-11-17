@@ -11,7 +11,7 @@
     "build/**/*.json"
   ],
   "peerDependencies": {
-    "web3": "^1.6.0"
+    "web3": "^1.6.1"
   },
   "devDependencies": {
     "@openzeppelin/contracts": "3.3.0",
