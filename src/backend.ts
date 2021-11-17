@@ -5,6 +5,10 @@ import { Db } from './db';
 import { ADDRESS, executedBookAmounts } from './orderbook';
 import { balanceOf, allowance } from './token';
 
+function recover(web3: Web3, hash: string, signature: string): string {
+  return web3.eth.accounts.recover(hash, signature);
+}
+
 async function _availableForLimitOrder(web3: Web3, db: Db, bookToken: string, maker: string): Promise<bigint> {
   if (bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid token: ' + bookToken);
   const balance = await balanceOf(web3, bookToken, maker);
@@ -35,7 +39,7 @@ async function _prepareMarketBuyOrder(web3: Web3, db: Db, baseToken: string, quo
   if (amount <= 0n) throw new Error('Invalid amount: ' + amount);
   const bookToken = baseToken;
   const execToken = quoteToken;
-  const orders = await db.lookupOrders(bookToken, execToken, 'asc');
+  const orders = await db.lookupOrders(bookToken, execToken, Date.now(), 'asc');
   const orderIds = [];
   const bookAmounts = [];
   const execAmounts = [];
@@ -43,8 +47,7 @@ async function _prepareMarketBuyOrder(web3: Web3, db: Db, baseToken: string, quo
   const salts = [];
   const signatures = [];
   const available: { [adress: string]: bigint } = {};
-  for (const { orderId, bookAmount, execAmount, maker, salt, signature, freeBookAmount, time, duration } of orders) {
-    if (Date.now() >= time + duration) continue;
+  for (const { orderId, bookAmount, execAmount, maker, salt, signature, freeBookAmount } of orders) {
     available[maker] = available[maker] || await _availableForLimitOrder(web3, db, bookToken, maker);
     if ((available[maker] || 0n) < 0n) continue;
     orderIds.push(orderId);
@@ -66,7 +69,7 @@ async function _prepareMarketSellOrder(web3: Web3, db: Db, baseToken: string, qu
   if (amount <= 0n) throw new Error('Invalid amount: ' + amount);
   const bookToken = quoteToken;
   const execToken = baseToken;
-  const orders = await db.lookupOrders(bookToken, execToken, 'desc');
+  const orders = await db.lookupOrders(bookToken, execToken, Date.now(), 'desc');
   const orderIds = [];
   const bookAmounts = [];
   const execAmounts = [];
@@ -74,8 +77,7 @@ async function _prepareMarketSellOrder(web3: Web3, db: Db, baseToken: string, qu
   const salts = [];
   const signatures = [];
   const available: { [adress: string]: bigint } = {};
-  for (const { orderId, bookAmount, execAmount, maker, salt, signature, freeBookAmount, time, duration } of orders) {
-    if (Date.now() >= time + duration) continue;
+  for (const { orderId, bookAmount, execAmount, maker, salt, signature, freeBookAmount } of orders) {
     available[maker] = available[maker] || await _availableForLimitOrder(web3, db, bookToken, maker);
     if ((available[maker] || 0n) < 0n) continue;
     const freeExecAmount = (freeBookAmount * execAmount + (bookAmount - 1n)) / bookAmount;

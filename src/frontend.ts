@@ -20,16 +20,11 @@ function currentUser(web3: Web3): string {
 async function sign(web3: Web3, hash: string): Promise<string> {
   const account = web3.eth.accounts.wallet[0];
   if (account === undefined) throw new Error('No account set');
-  const { signature } = await web3.eth.accounts.sign(hash, account.privateKey);
-  return signature
+  const signature = await web3.eth.personal.sign(hash, account.address, '');
+  return signature;
 }
 
-async function recover(web3: Web3, hash: string, signature: string): Promise<string> {
-  return web3.eth.accounts.recover(hash, signature);
-}
-
-function generateSalt(duration = DEFAULT_ORDER_DURATION, startTime = Date.now(), random = randomInt()): bigint {
-  const endTime = startTime + duration;
+function generateSalt(startTime: number, endTime: number, random = randomInt()): bigint {
   return BigInt(random) << 128n | BigInt(Math.floor(startTime / 1000)) << 64n | BigInt(Math.floor(endTime / 1000));
 }
 
@@ -51,10 +46,12 @@ export async function createLimitBuyOrder(web3: Web3, api: Api, baseToken: strin
   const freeBookAmount = bookAmount;
   const maker = currentUser(web3);
   const time = Date.now();
-  const salt = generateSalt(duration, time);
+  const startTime = time;
+  const endTime = startTime + duration;
+  const salt = generateSalt(startTime, endTime);
   const orderId = await generateOrderId(web3, bookToken, execToken, bookAmount, execAmount, maker, salt);
   const signature = await sign(web3, orderId);
-  const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, freeBookAmount, price, time, duration };
+  const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price, time, startTime, endTime, freeBookAmount };
   const available = await api.availableForLimitOrder(bookToken, maker);
   if (available < bookAmount) throw new Error('Insufficient balance: ' + available);
   await api.insertOrder(order);
@@ -72,10 +69,12 @@ export async function createLimitSellOrder(web3: Web3, api: Api, baseToken: stri
   const freeBookAmount = bookAmount;
   const maker = currentUser(web3);
   const time = Date.now();
-  const salt = generateSalt(duration, time);
+  const startTime = time;
+  const endTime = startTime + duration;
+  const salt = generateSalt(startTime, endTime);
   const orderId = await generateOrderId(web3, bookToken, execToken, bookAmount, execAmount, maker, salt);
   const signature = await sign(web3, orderId);
-  const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, freeBookAmount, price, time, duration };
+  const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price, time, startTime, endTime, freeBookAmount };
   const available = await api.availableForLimitOrder(bookToken, maker);
   if (available < bookAmount) throw new Error('Insufficient balance: ' + available);
   await api.insertOrder(order);
@@ -88,7 +87,7 @@ export async function cancelLimitOrder(web3: Web3, api: Api, orderId: string, fo
   if (order === null) throw new Error('Unknown order: ' + orderId);
   if (order.maker !== maker) throw new Error('Invalid order: ' + orderId);
   const execAmount = await executedBookAmounts(web3, orderId);
-  if ((execAmount > 0n || forceOnChain) && (order.time + order.duration > Date.now())) {
+  if ((execAmount > 0n || forceOnChain) && (order.endTime > Date.now())) {
     // the order was partially executed, exposed publicly, and needs to be cancelled on-chain
     const { bookToken, execToken, bookAmount, execAmount, salt } = order;
     await cancelOrder(web3, bookToken, execToken, bookAmount, execAmount, salt);

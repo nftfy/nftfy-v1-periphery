@@ -8,10 +8,11 @@ export type Order = {
   salt: bigint;
   signature: string;
 
-  freeBookAmount: bigint;
   price: bigint;
   time: number;
-  duration: number;
+  startTime: number;
+  endTime: number;
+  freeBookAmount: bigint;
 };
 
 export type PreparedExecution = {

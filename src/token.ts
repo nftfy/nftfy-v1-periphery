@@ -29,7 +29,7 @@ const ABI: AbiItem[] = [
       { type: 'uint256', name: '_amount' },
     ],
     stateMutability: 'nonpayable',
-    'outputs': [{ type: 'bool', name: '_success' }],
+    outputs: [{ type: 'bool', name: '_success' }],
   },
 ];
 

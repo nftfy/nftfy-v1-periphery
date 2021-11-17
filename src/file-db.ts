@@ -74,28 +74,28 @@ export function createDb(filename: string): Db {
     return order;
   }
 
-  // SELECT * FROM orders WHERE bookToken = %bookToken% AND execToken = %execToken% AND (%maker% == '' OR maker == %maker%) ORDER BY price (ASC | DESC)
-  async function lookupOrders(bookToken: string, execToken: string, direction: 'asc' | 'desc', maker = ''): Promise<Order[]> {
+  // SELECT * FROM orders WHERE bookToken = %bookToken AND execToken = %execToken AND startTime <= %time AND %time < endTime ORDER BY price (ASC | DESC), time ASC
+  async function lookupOrders(bookToken: string, execToken: string, time: number, direction: 'asc' | 'desc'): Promise<Order[]> {
     const level0 = db[bookToken] || (db[bookToken] = {});
     const level1 = level0[execToken] || (level0[execToken] = []);
-    const orders = [...level1.filter((order) => order.maker === (maker || order.maker))];
+    const orders = [...level1.filter((order) => order.startTime <= time && time < order.endTime)];
     if (direction === 'asc') {
       orders.sort((order1, order2) => order1.price < order2.price ? -1 : order1.price > order2.price ? 1 : order1.time - order2.time);
       return orders;
     }
     if (direction === 'desc') {
-      orders.sort((order1, order2) => order2.price < order1.price ? -1 : order2.price > order1.price ? 1 : order2.time - order1.time);
+      orders.sort((order1, order2) => order2.price < order1.price ? -1 : order2.price > order1.price ? 1 : order1.time - order2.time);
       return orders;
     }
     throw new Error('Panic');
   }
 
-  // SELECT SUM(freeBookAmount) FROM orders WHERE bookToken = %bookToken% AND (%maker% = '' OR maker = %maker%)
-  async function bookSumOrders(bookToken: string, maker = ''): Promise<bigint> {
+  // SELECT SUM(freeBookAmount) FROM orders WHERE bookToken = %bookToken AND maker = %maker
+  async function bookSumOrders(bookToken: string, maker: string): Promise<bigint> {
     const level0 = db[bookToken] || (db[bookToken] = {});
     let sum = 0n;
     for (const level1 of Object.values(level0)) {
-      const orders = [...level1.filter((order) => order.maker === (maker || order.maker))];
+      const orders = [...level1.filter((order) => order.maker === maker)];
       sum += orders.reduce((acc, order) => acc + order.freeBookAmount, 0n);
     }
     return sum;
