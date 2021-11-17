@@ -51,9 +51,10 @@ export async function createLimitBuyOrder(web3: Web3, api: Api, baseToken: strin
   const salt = generateSalt(startTime, endTime);
   const orderId = await generateOrderId(web3, bookToken, execToken, bookAmount, execAmount, maker, salt);
   const signature = await sign(web3, orderId);
-  const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price, time, startTime, endTime, freeBookAmount };
   const available = await api.availableForLimitOrder(bookToken, maker);
   if (available < bookAmount) throw new Error('Insufficient balance: ' + available);
+  price = execAmount * 1000000000000000000n / bookAmount;
+  const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price, time, startTime, endTime, freeBookAmount };
   await api.insertOrder(order);
   return order;
 }
@@ -74,20 +75,21 @@ export async function createLimitSellOrder(web3: Web3, api: Api, baseToken: stri
   const salt = generateSalt(startTime, endTime);
   const orderId = await generateOrderId(web3, bookToken, execToken, bookAmount, execAmount, maker, salt);
   const signature = await sign(web3, orderId);
-  const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price, time, startTime, endTime, freeBookAmount };
   const available = await api.availableForLimitOrder(bookToken, maker);
   if (available < bookAmount) throw new Error('Insufficient balance: ' + available);
+  price = execAmount * 1000000000000000000n / bookAmount;
+  const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price, time, startTime, endTime, freeBookAmount };
   await api.insertOrder(order);
   return order;
 }
 
-export async function cancelLimitOrder(web3: Web3, api: Api, orderId: string, forceOnChain = false): Promise<void> {
+export async function cancelLimitOrder(web3: Web3, api: Api, orderId: string): Promise<void> {
   const maker = currentUser(web3);
   const order = await api.lookupOrder(orderId);
   if (order === null) throw new Error('Unknown order: ' + orderId);
   if (order.maker !== maker) throw new Error('Invalid order: ' + orderId);
-  const execAmount = await executedBookAmounts(web3, orderId);
-  if ((execAmount > 0n || forceOnChain) && (order.endTime > Date.now())) {
+  const executedBookAmount = await executedBookAmounts(web3, orderId);
+  if ((executedBookAmount < order.bookAmount) && (order.endTime > Date.now())) {
     // the order was partially executed, exposed publicly, and needs to be cancelled on-chain
     const { bookToken, execToken, bookAmount, execAmount, salt } = order;
     await cancelOrder(web3, bookToken, execToken, bookAmount, execAmount, salt);

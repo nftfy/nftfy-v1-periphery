@@ -5,6 +5,6 @@ export interface Db {
   removeOrder(orderId: string): Promise<void>;
   updateOrder(orderId: string, freeBookAmount: bigint): Promise<void>;
   lookupOrder(orderId: string): Promise<Order | null>;
-  lookupOrders(bookToken: string, execToken: string, time: number, direction: 'asc' | 'desc'): Promise<Order[]>;
+  lookupOrders(bookToken: string, execToken: string, time: number): Promise<Order[]>;
   bookSumOrders(bookToken: string, maker: string): Promise<bigint>;
 }

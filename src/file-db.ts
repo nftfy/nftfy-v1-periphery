@@ -74,20 +74,13 @@ export function createDb(filename: string): Db {
     return order;
   }
 
-  // SELECT * FROM orders WHERE bookToken = %bookToken AND execToken = %execToken AND startTime <= %time AND %time < endTime ORDER BY price (ASC | DESC), time ASC
-  async function lookupOrders(bookToken: string, execToken: string, time: number, direction: 'asc' | 'desc'): Promise<Order[]> {
+  // SELECT * FROM orders WHERE bookToken = %bookToken AND execToken = %execToken AND startTime <= %time AND %time < endTime ORDER BY price ASC, time ASC
+  async function lookupOrders(bookToken: string, execToken: string, time: number): Promise<Order[]> {
     const level0 = db[bookToken] || (db[bookToken] = {});
     const level1 = level0[execToken] || (level0[execToken] = []);
     const orders = [...level1.filter((order) => order.startTime <= time && time < order.endTime)];
-    if (direction === 'asc') {
-      orders.sort((order1, order2) => order1.price < order2.price ? -1 : order1.price > order2.price ? 1 : order1.time - order2.time);
-      return orders;
-    }
-    if (direction === 'desc') {
-      orders.sort((order1, order2) => order2.price < order1.price ? -1 : order2.price > order1.price ? 1 : order1.time - order2.time);
-      return orders;
-    }
-    throw new Error('Panic');
+    orders.sort((order1, order2) => order1.price < order2.price ? -1 : order1.price > order2.price ? 1 : order1.time - order2.time);
+    return orders;
   }
 
   // SELECT SUM(freeBookAmount) FROM orders WHERE bookToken = %bookToken AND maker = %maker

@@ -5,15 +5,35 @@ import { Db } from './db';
 import { ADDRESS, executedBookAmounts, generateOrderId } from './orderbook';
 import { balanceOf, allowance } from './token';
 
-function recover(web3: Web3, hash: string, signature: string): string {
+function _recover(web3: Web3, hash: string, signature: string): string {
   return web3.eth.accounts.recover(hash, signature);
 }
 
-function extractSalt(salt: bigint): { startTime: number, endTime: number, random: number } {
-  const startTime = Number(salt & (2n ** 64n - 1n)) * 1000;
-  const endTime = Number((salt >> 64n) & (2n ** 64n - 1n)) * 1000;
-  const random = Number(salt >> 128n);
+function _extractSalt(salt: bigint): { startTime: number, endTime: number, random: number } {
+  if (salt < 0) throw new Error('Invalid salt: ' + salt);
+  const _startTime = (salt & (2n ** 64n - 1n)) * 1000n;
+  const _endTime = ((salt >> 64n) & (2n ** 64n - 1n)) * 1000n;
+  const _random = salt >> 128n;
+  if (_startTime > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error('Invalid salt.startTime: ' + _startTime);
+  if (_endTime > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error('Invalid salt.endTime: ' + _endTime);
+  if (_random > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error('Invalid salt.random: ' + _random);
+  const startTime = Number(_startTime);
+  const endTime = Number(_endTime);
+  const random = Number(_random);
   return { startTime, endTime, random };
+}
+
+async function _validateOrder(web3: Web3, order: Order): Promise<boolean> {
+  if (order.bookToken === '0x0000000000000000000000000000000000000000') return false;
+  if (order.bookAmount <= 0 || order.bookAmount >= 2n ** 256n) return false;
+  if (order.execAmount <= 0 || order.execAmount >= 2n ** 256n) return false;
+  if (order.freeBookAmount <= 0 || order.freeBookAmount >= 2n ** 256n) return false;
+  if (order.salt < 0 || order.salt >= 2n ** 256n) return false;
+  const orderId = await generateOrderId(web3, order.bookToken, order.execToken, order.bookAmount, order.execAmount, order.maker, order.salt);
+  if (order.orderId !== orderId) throw new Error('Invalid orderId: ' + order.orderId);
+  const maker = _recover(web3, orderId, order.signature);
+  if (order.maker !== maker) return false;
+  return true;
 }
 
 async function _availableForLimitOrder(web3: Web3, db: Db, bookToken: string, maker: string): Promise<bigint> {
@@ -34,7 +54,7 @@ async function _updateOrders(web3: Web3, db: Db, orderIds: string[]): Promise<vo
   }
   for (const order of orders) {
     const executedBookAmount = await executedBookAmounts(web3, order.orderId);
-    if (executedBookAmount >= order.bookAmount) {
+    if (executedBookAmount >= order.bookAmount || Date.now() >= order.endTime) {
       await db.removeOrder(order.orderId);
     } else {
       const freeBookAmount = order.bookAmount - executedBookAmount;
@@ -47,7 +67,7 @@ async function _prepareMarketBuyOrder(web3: Web3, db: Db, baseToken: string, quo
   if (amount <= 0n) throw new Error('Invalid amount: ' + amount);
   const bookToken = baseToken;
   const execToken = quoteToken;
-  const orders = await db.lookupOrders(bookToken, execToken, Date.now(), 'asc');
+  const orders = await db.lookupOrders(bookToken, execToken, Date.now());
   const orderIds = [];
   const bookAmounts = [];
   const execAmounts = [];
@@ -77,7 +97,7 @@ async function _prepareMarketSellOrder(web3: Web3, db: Db, baseToken: string, qu
   if (amount <= 0n) throw new Error('Invalid amount: ' + amount);
   const bookToken = quoteToken;
   const execToken = baseToken;
-  const orders = await db.lookupOrders(bookToken, execToken, Date.now(), 'desc');
+  const orders = await db.lookupOrders(bookToken, execToken, Date.now());
   const orderIds = [];
   const bookAmounts = [];
   const execAmounts = [];
@@ -123,24 +143,17 @@ export function createApi(web3: Web3, db: Db): Api {
   }
 
   async function insertOrder(order: Order): Promise<void> {
-    if (order.bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid token: ' + order.bookToken);
-    if (order.bookAmount <= 0 || order.bookAmount >= 2n ** 256n) throw new Error('Invalid bookAmount: ' + order.bookAmount);
-    if (order.execAmount <= 0 || order.execAmount >= 2n ** 256n) throw new Error('Invalid execAmount: ' + order.execAmount);
-    if (order.freeBookAmount <= 0 || order.freeBookAmount >= 2n ** 256n) throw new Error('Invalid freeBookAmount: ' + order.freeBookAmount);
-    if (order.salt < 0 || order.salt >= 2n ** 256n) throw new Error('Invalid salt: ' + order.salt);
-    const { startTime, endTime } = extractSalt(order.salt);
-    if (startTime !== order.startTime) throw new Error('Invalid startTime: ' + startTime);
-    if (endTime !== order.endTime) throw new Error('Invalid endTime: ' + endTime);
-    const orderId = await generateOrderId(web3, order.bookToken, order.execToken, order.bookAmount, order.execAmount, order.maker, order.salt);
-    if (order.orderId !== orderId) throw new Error('Invalid orderId: ' + order.orderId);
-    const maker = recover(web3, orderId, order.signature);
-    if (order.maker !== maker) throw new Error('Invalid maker: ' + order.maker);
-    const executedBookAmount = await executedBookAmounts(web3, orderId);
+    if (!_validateOrder(web3, order)) throw new Error('Invalid order');
+    const executedBookAmount = await executedBookAmounts(web3, order.orderId);
+    if (executedBookAmount >= order.bookAmount) throw new Error('Inactive order');
     const freeBookAmount = order.bookAmount - executedBookAmount;
-    if (freeBookAmount !== order.freeBookAmount) throw new Error('Invalid freeBookAmount: ' + freeBookAmount);
-    const available = await _availableForLimitOrder(web3, db, order.bookToken, order.maker);
-    if (available < order.freeBookAmount) throw new Error('Insufficient balance: ' + available);
+    const { startTime, endTime } = _extractSalt(order.salt);
+    const price = order.execAmount * 1000000000000000000n / order.bookAmount;
+    order.price = price;
     order.time = Date.now();
+    order.startTime = startTime;
+    order.endTime = endTime;
+    order.freeBookAmount = freeBookAmount;
     return await db.insertOrder(order);
   }
 

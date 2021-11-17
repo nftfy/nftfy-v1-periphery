@@ -49,7 +49,7 @@ async function main(args: string[]): Promise<void> {
   if (command === 'cancel') {
     const orderId = args[4];
     if (orderId === undefined) throw new Error('Missing orderId');
-    await cancelLimitOrder(web3, api, orderId, true);
+    await cancelLimitOrder(web3, api, orderId);
   }
   else
   if (command === 'execute') {
