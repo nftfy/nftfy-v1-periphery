@@ -71,14 +71,14 @@ export function createDb(filename: string): Db {
     if (index < 0) throw new Error('Panic');
     const order = level1[index];
     if (order === undefined) throw new Error('Panic');
-    return order;
+    return { ...order };
   }
 
   // SELECT * FROM orders WHERE bookToken = %bookToken AND execToken = %execToken AND startTime <= %time AND %time < endTime ORDER BY price ASC, time ASC
   async function lookupOrders(bookToken: string, execToken: string, time: number): Promise<Order[]> {
     const level0 = db[bookToken] || (db[bookToken] = {});
     const level1 = level0[execToken] || (level0[execToken] = []);
-    const orders = [...level1.filter((order) => order.startTime <= time && time < order.endTime)];
+    const orders = level1.filter((order) => order.startTime <= time && time < order.endTime).map((order) => ({ ...order }));
     orders.sort((order1, order2) => order1.price < order2.price ? -1 : order1.price > order2.price ? 1 : order1.time - order2.time);
     return orders;
   }
@@ -89,7 +89,7 @@ export function createDb(filename: string): Db {
     let sum = 0n;
     for (const level1 of Object.values(level0)) {
       const orders = [...level1.filter((order) => order.maker === maker)];
-      sum += orders.reduce((acc, order) => acc + order.freeBookAmount, 0n);
+      sum = orders.reduce((acc, order) => acc + order.freeBookAmount, sum);
     }
     return sum;
   }
