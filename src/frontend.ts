@@ -51,7 +51,7 @@ export async function createLimitBuyOrder(web3: Web3, api: Api, baseToken: strin
   const salt = generateSalt(startTime, endTime);
   const orderId = await generateOrderId(web3, bookToken, execToken, bookAmount, execAmount, maker, salt);
   const signature = await sign(web3, orderId);
-  const available = await api.availableForLimitOrder(bookToken, maker);
+  const available = await api.availableBalance(bookToken, maker);
   if (available < bookAmount) throw new Error('Insufficient balance: ' + available);
   price = execAmount * 1000000000000000000n / bookAmount;
   const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price, time, startTime, endTime, freeBookAmount };
@@ -75,7 +75,7 @@ export async function createLimitSellOrder(web3: Web3, api: Api, baseToken: stri
   const salt = generateSalt(startTime, endTime);
   const orderId = await generateOrderId(web3, bookToken, execToken, bookAmount, execAmount, maker, salt);
   const signature = await sign(web3, orderId);
-  const available = await api.availableForLimitOrder(bookToken, maker);
+  const available = await api.availableBalance(bookToken, maker);
   if (available < bookAmount) throw new Error('Insufficient balance: ' + available);
   price = execAmount * 1000000000000000000n / bookAmount;
   const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price, time, startTime, endTime, freeBookAmount };

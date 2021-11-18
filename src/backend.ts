@@ -5,7 +5,7 @@ import { Db } from './db';
 import { ADDRESS, executedBookAmounts, generateOrderId } from './orderbook';
 import { balanceOf, allowance } from './token';
 
-function _recover(web3: Web3, hash: string, signature: string): string {
+function _recoverSigner(web3: Web3, hash: string, signature: string): string {
   return web3.eth.accounts.recover(hash, signature);
 }
 
@@ -23,20 +23,18 @@ function _extractSalt(salt: bigint): { startTime: number, endTime: number, rando
   return { startTime, endTime, random };
 }
 
-async function _validateOrder(web3: Web3, order: Order): Promise<boolean> {
-  if (order.bookToken === '0x0000000000000000000000000000000000000000') return false;
-  if (order.bookAmount <= 0 || order.bookAmount >= 2n ** 256n) return false;
-  if (order.execAmount <= 0 || order.execAmount >= 2n ** 256n) return false;
-  if (order.freeBookAmount <= 0 || order.freeBookAmount >= 2n ** 256n) return false;
-  if (order.salt < 0 || order.salt >= 2n ** 256n) return false;
+async function _validateOrder(web3: Web3, order: Order): Promise<void> {
+  if (order.bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid order.bookToken: ' + order.bookToken);
+  if (order.bookAmount <= 0 || order.bookAmount >= 2n ** 256n) throw new Error('Invalid order.bookAmount: ' + order.bookAmount);
+  if (order.execAmount <= 0 || order.execAmount >= 2n ** 256n) throw new Error('Invalid order.execAmount: ' + order.execAmount);
+  if (order.salt < 0 || order.salt >= 2n ** 256n) throw new Error('Invalid order.salt: ' + order.salt);
   const orderId = await generateOrderId(web3, order.bookToken, order.execToken, order.bookAmount, order.execAmount, order.maker, order.salt);
-  if (order.orderId !== orderId) throw new Error('Invalid orderId: ' + order.orderId);
-  const maker = _recover(web3, orderId, order.signature);
-  if (order.maker !== maker) return false;
-  return true;
+  if (order.orderId !== orderId) throw new Error('Invalid order.orderId: ' + order.orderId);
+  const maker = _recoverSigner(web3, orderId, order.signature);
+  if (order.maker !== maker) throw new Error('Invalid order.maker: ' + order.maker);
 }
 
-async function _availableForLimitOrder(web3: Web3, db: Db, bookToken: string, maker: string): Promise<bigint> {
+async function _availableBalance(web3: Web3, db: Db, bookToken: string, maker: string): Promise<bigint> {
   if (bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid token: ' + bookToken);
   const balance = await balanceOf(web3, bookToken, maker);
   const approved = await allowance(web3, bookToken, maker, ADDRESS);
@@ -45,7 +43,7 @@ async function _availableForLimitOrder(web3: Web3, db: Db, bookToken: string, ma
   return free >= used ? free - used : -1n;
 }
 
-async function _updateOrders(web3: Web3, db: Db, orderIds: string[]): Promise<void> {
+async function _updateOrders(web3: Web3, db: Db, orderIds: string[], time: number): Promise<void> {
   const orders: Order[] = [];
   for (const orderId of orderIds) {
     const order = await db.lookupOrder(orderId);
@@ -54,7 +52,7 @@ async function _updateOrders(web3: Web3, db: Db, orderIds: string[]): Promise<vo
   }
   for (const order of orders) {
     const executedBookAmount = await executedBookAmounts(web3, order.orderId);
-    if (executedBookAmount >= order.bookAmount || Date.now() >= order.endTime) {
+    if (executedBookAmount >= order.bookAmount || time >= order.endTime) {
       await db.removeOrder(order.orderId);
     } else {
       const freeBookAmount = order.bookAmount - executedBookAmount;
@@ -63,11 +61,9 @@ async function _updateOrders(web3: Web3, db: Db, orderIds: string[]): Promise<vo
   }
 }
 
-async function _prepareMarketBuyOrder(web3: Web3, db: Db, baseToken: string, quoteToken: string, amount: bigint): Promise<PreparedExecution | null> {
-  if (amount <= 0n) throw new Error('Invalid amount: ' + amount);
-  const bookToken = baseToken;
-  const execToken = quoteToken;
-  const orders = await db.lookupOrders(bookToken, execToken, Date.now());
+async function _prepareExecution(web3: Web3, db: Db, bookToken: string, execToken: string, requiredBookAmount: bigint, time: number): Promise<PreparedExecution | null> {
+  if (requiredBookAmount <= 0n) throw new Error('Invalid requiredBookAmount: ' + requiredBookAmount);
+  const orders = await db.lookupOrders(bookToken, execToken, time);
   const orderIds = [];
   const bookAmounts = [];
   const execAmounts = [];
@@ -76,7 +72,7 @@ async function _prepareMarketBuyOrder(web3: Web3, db: Db, baseToken: string, quo
   const signatures = [];
   const available: { [adress: string]: bigint } = {};
   for (const { orderId, bookAmount, execAmount, maker, salt, signature, freeBookAmount } of orders) {
-    available[maker] = available[maker] || await _availableForLimitOrder(web3, db, bookToken, maker);
+    available[maker] = available[maker] || await _availableBalance(web3, db, bookToken, maker);
     if ((available[maker] || 0n) < 0n) continue;
     orderIds.push(orderId);
     bookAmounts.push(bookAmount);
@@ -84,41 +80,9 @@ async function _prepareMarketBuyOrder(web3: Web3, db: Db, baseToken: string, quo
     makers.push(maker);
     salts.push(salt);
     signatures.push(signature);
-    amount -= freeBookAmount;
-    if (amount <= 0n) {
-      const lastRequiredBookAmount = freeBookAmount + amount;
-      return { bookToken, execToken, orderIds, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount };
-    }
-  }
-  return null;
-}
-
-async function _prepareMarketSellOrder(web3: Web3, db: Db, baseToken: string, quoteToken: string, amount: bigint): Promise<PreparedExecution | null> {
-  if (amount <= 0n) throw new Error('Invalid amount: ' + amount);
-  const bookToken = quoteToken;
-  const execToken = baseToken;
-  const orders = await db.lookupOrders(bookToken, execToken, Date.now());
-  const orderIds = [];
-  const bookAmounts = [];
-  const execAmounts = [];
-  const makers = [];
-  const salts = [];
-  const signatures = [];
-  const available: { [adress: string]: bigint } = {};
-  for (const { orderId, bookAmount, execAmount, maker, salt, signature, freeBookAmount } of orders) {
-    available[maker] = available[maker] || await _availableForLimitOrder(web3, db, bookToken, maker);
-    if ((available[maker] || 0n) < 0n) continue;
-    const freeExecAmount = (freeBookAmount * execAmount + (bookAmount - 1n)) / bookAmount;
-    orderIds.push(orderId);
-    bookAmounts.push(bookAmount);
-    execAmounts.push(execAmount);
-    makers.push(maker);
-    salts.push(salt);
-    signatures.push(signature);
-    amount -= freeExecAmount;
-    if (amount <= 0n) {
-      const lastRequiredExecAmount = freeExecAmount + amount;
-      const lastRequiredBookAmount = lastRequiredExecAmount * bookAmount / execAmount;
+    requiredBookAmount -= freeBookAmount;
+    if (requiredBookAmount <= 0n) {
+      const lastRequiredBookAmount = freeBookAmount + requiredBookAmount;
       return { bookToken, execToken, orderIds, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount };
     }
   }
@@ -128,29 +92,29 @@ async function _prepareMarketSellOrder(web3: Web3, db: Db, baseToken: string, qu
 // api used by the backend
 
 export interface Api {
-  availableForLimitOrder(bookToken: string, maker: string): Promise<bigint>;
+  availableBalance(bookToken: string, maker: string): Promise<bigint>;
   insertOrder(order: Order): Promise<void>;
   lookupOrder(orderId: string): Promise<Order | null>;
-  prepareMarketBuyOrder(baseToken: string, quoteToken: string, amount: bigint): Promise<PreparedExecution | null>;
-  prepareMarketSellOrder(baseToken: string, quoteToken: string, amount: bigint): Promise<PreparedExecution | null>;
+  prepareExecution(bookToken: string, execToken: string, requiredBookAmount: bigint): Promise<PreparedExecution | null>;
   updateOrders(orderIds: string[]): Promise<void>;
 }
 
 export function createApi(web3: Web3, db: Db): Api {
 
-  async function availableForLimitOrder(bookToken: string, maker: string): Promise<bigint> {
-    return await _availableForLimitOrder(web3, db, bookToken, maker);
+  async function availableBalance(bookToken: string, maker: string): Promise<bigint> {
+    return await _availableBalance(web3, db, bookToken, maker);
   }
 
   async function insertOrder(order: Order): Promise<void> {
-    if (!_validateOrder(web3, order)) throw new Error('Invalid order');
+    _validateOrder(web3, order);
+    const price = order.execAmount * 1000000000000000000n / order.bookAmount;
+    const time = Date.now();
+    const { startTime, endTime } = _extractSalt(order.salt);
     const executedBookAmount = await executedBookAmounts(web3, order.orderId);
     if (executedBookAmount >= order.bookAmount) throw new Error('Inactive order');
     const freeBookAmount = order.bookAmount - executedBookAmount;
-    const { startTime, endTime } = _extractSalt(order.salt);
-    const price = order.execAmount * 1000000000000000000n / order.bookAmount;
     order.price = price;
-    order.time = Date.now();
+    order.time = time;
     order.startTime = startTime;
     order.endTime = endTime;
     order.freeBookAmount = freeBookAmount;
@@ -161,24 +125,21 @@ export function createApi(web3: Web3, db: Db): Api {
     return await db.lookupOrder(orderId);
   }
 
-  async function prepareMarketBuyOrder(baseToken: string, quoteToken: string, amount: bigint): Promise<PreparedExecution | null> {
-    return await _prepareMarketBuyOrder(web3, db, baseToken, quoteToken, amount);
-  }
-
-  async function prepareMarketSellOrder(baseToken: string, quoteToken: string, amount: bigint): Promise<PreparedExecution | null> {
-    return await _prepareMarketSellOrder(web3, db, baseToken, quoteToken, amount);
+  async function prepareExecution(bookToken: string, execToken: string, requiredBookAmount: bigint): Promise<PreparedExecution | null> {
+    const time = Date.now()
+    return await _prepareExecution(web3, db, bookToken, execToken, requiredBookAmount, time);
   }
 
   async function updateOrders(orderIds: string[]): Promise<void> {
-    return await _updateOrders(web3, db, orderIds);
+    const time = Date.now()
+    return await _updateOrders(web3, db, orderIds, time);
   }
 
   return {
-    availableForLimitOrder,
+    availableBalance,
     insertOrder,
     lookupOrder,
-    prepareMarketBuyOrder,
-    prepareMarketSellOrder,
+    prepareExecution,
     updateOrders,
   };
 }
