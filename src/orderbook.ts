@@ -126,7 +126,7 @@ const ABI: AbiItem[] = [
 ];
 
 async function _currentUser(web3: Web3): Promise<string> {
-  const [address] = await web3.eth.getAccounts()
+  const [address] = await web3.eth.getAccounts();
   if (address === undefined) throw new Error('No account set');
   return address;
 }

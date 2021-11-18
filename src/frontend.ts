@@ -20,6 +20,7 @@ function _randomInt(limit = Number.MAX_SAFE_INTEGER): number {
 }
 
 function _coins(units: bigint, decimals: number): string {
+  if (units < 0n) throw new Error('Invalid units: ' + units);
   const _units = String(units);
   if (decimals == 0) return _units;
   const s = _units.padStart(1 + decimals, '0');
@@ -28,7 +29,7 @@ function _coins(units: bigint, decimals: number): string {
 
 function _units(coins: string, decimals: number): bigint {
   const regex = new RegExp(`^\\d+${decimals > 0 ? `(\\.\\d{1,${decimals}})?` : ''}$`);
-  if (!regex.test(coins)) throw new Error('Invalid amount: ' + coins);
+  if (!regex.test(coins)) throw new Error('Invalid coins: ' + coins);
   let index = coins.indexOf('.');
   if (index < 0) index = coins.length;
   const s = coins.slice(index + 1);
@@ -36,7 +37,7 @@ function _units(coins: string, decimals: number): bigint {
 }
 
 async function _currentUser(web3: Web3): Promise<string> {
-  const [address] = await web3.eth.getAccounts()
+  const [address] = await web3.eth.getAccounts();
   if (address === undefined) throw new Error('No account set');
   return address;
 }
@@ -63,75 +64,79 @@ export async function availableBalance(web3: Web3, api: Api, bookToken: string):
   return _coins(await api.availableBalance(bookToken, maker), bookDecimals);
 }
 
+export async function requiresEnableOrderCreation(web3: Web3, api: Api, bookToken: string): Promise<boolean> {
+  if (bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid token: ' + bookToken);
+  const maker = await _currentUser(web3);
+  const approved = await allowance(web3, bookToken, maker, ADDRESS);
+  return approved < 2n ** 128n;
+}
+
 export async function enableOrderCreation(web3: Web3, api: Api, bookToken: string, options: SendOptions = {}): Promise<string> {
   if (bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid token: ' + bookToken);
   return await approve(web3, bookToken, ADDRESS, 2n ** 256n - 1n, options);
 }
 
-export async function createLimitBuyOrder(web3: Web3, api: Api, baseToken: string, quoteToken: string, _amount: string, _price: string, duration = DEFAULT_ORDER_DURATION): Promise<string> {
+export async function createLimitBuyOrder(web3: Web3, api: Api, baseToken: string, quoteToken: string, _amount: string, _cost: string, duration = DEFAULT_ORDER_DURATION): Promise<string> {
   const bookToken = quoteToken;
   const execToken = baseToken;
   if (bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid token: ' + bookToken);
   const bookDecimals = await decimals(web3, bookToken);
   const execDecimals = execToken === '0x0000000000000000000000000000000000000000' ? 18 : await decimals(web3, execToken);
-  const amount = _units(_amount, bookDecimals);
-  let price = _units(_price, 18); // TODO
-  if (amount <= 0n) throw new Error('Invalid amount: ' + amount);
-  if (price <= 0n) throw new Error('Invalid price: ' + price);
-  if (amount * price >= 2n ** 256n) throw new Error('Numeric overflow');
-  const bookAmount = amount * price / 1000000000000000000n;
-  const execAmount = amount;
-  const freeBookAmount = bookAmount;
+  const bookAmount = _units(_cost, bookDecimals);
+  const execAmount = _units(_amount, execDecimals);
+  if (bookAmount <= 0n) throw new Error('Invalid bookAmount: ' + bookAmount);
+  if (execAmount <= 0n) throw new Error('Invalid execAmount: ' + execAmount);
+  if (bookAmount * execAmount >= 2n ** 256n) throw new Error('Numeric overflow');
   const maker = await _currentUser(web3);
+  const available = await api.availableBalance(bookToken, maker);
+  if (available < bookAmount) throw new Error('Insufficient balance: ' + available);
+  const freeBookAmount = bookAmount;
   const time = Date.now();
   const startTime = time;
   const endTime = startTime + duration;
   const salt = _generateSalt(startTime, endTime);
   const orderId = await generateOrderId(web3, bookToken, execToken, bookAmount, execAmount, maker, salt);
-  const available = await api.availableBalance(bookToken, maker);
-  if (available < bookAmount) throw new Error('Insufficient balance: ' + available);
   const signature = await _signHash(web3, orderId);
-  price = execAmount * 1000000000000000000n / bookAmount;
+  const price = execAmount * 1000000000000000000n / bookAmount;
   const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price, time, startTime, endTime, freeBookAmount };
   await api.insertOrder(order);
   return orderId;
 }
 
-export async function createLimitSellOrder(web3: Web3, api: Api, baseToken: string, quoteToken: string, _amount: string, _price: string, duration = DEFAULT_ORDER_DURATION): Promise<string> {
+export async function createLimitSellOrder(web3: Web3, api: Api, baseToken: string, quoteToken: string, _amount: string, _cost: string, duration = DEFAULT_ORDER_DURATION): Promise<string> {
   const bookToken = baseToken;
   const execToken = quoteToken;
   if (bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid token: ' + bookToken);
   const bookDecimals = await decimals(web3, bookToken);
   const execDecimals = execToken === '0x0000000000000000000000000000000000000000' ? 18 : await decimals(web3, execToken);
-  const amount = _units(_amount, bookDecimals);
-  let price = _units(_price, 18); // TODO
-  if (amount <= 0n) throw new Error('Invalid amount: ' + amount);
-  if (price <= 0n) throw new Error('Invalid price: ' + price);
-  const bookAmount = amount;
-  const execAmount = amount * price / 1000000000000000000n;
-  const freeBookAmount = bookAmount;
+  const bookAmount = _units(_amount, bookDecimals);
+  const execAmount = _units(_cost, execDecimals);
+  if (bookAmount <= 0n) throw new Error('Invalid bookAmount: ' + bookAmount);
+  if (execAmount <= 0n) throw new Error('Invalid execAmount: ' + execAmount);
+  if (bookAmount * execAmount >= 2n ** 256n) throw new Error('Numeric overflow');
   const maker = await _currentUser(web3);
+  const available = await api.availableBalance(bookToken, maker);
+  if (available < bookAmount) throw new Error('Insufficient balance: ' + available);
+  const freeBookAmount = bookAmount;
   const time = Date.now();
   const startTime = time;
   const endTime = startTime + duration;
   const salt = _generateSalt(startTime, endTime);
   const orderId = await generateOrderId(web3, bookToken, execToken, bookAmount, execAmount, maker, salt);
-  const available = await api.availableBalance(bookToken, maker);
-  if (available < bookAmount) throw new Error('Insufficient balance: ' + available);
   const signature = await _signHash(web3, orderId);
-  price = execAmount * 1000000000000000000n / bookAmount;
+  const price = execAmount * 1000000000000000000n / bookAmount;
   const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price, time, startTime, endTime, freeBookAmount };
   await api.insertOrder(order);
   return orderId;
 }
 
 export async function cancelLimitOrder(web3: Web3, api: Api, orderId: string, options: SendOptions = {}): Promise<string | null> {
-  const time = Date.now();
   const maker = await _currentUser(web3);
   const order = await api.lookupOrder(orderId);
   if (order === null) throw new Error('Unknown order: ' + orderId);
   if (order.maker !== maker) throw new Error('Invalid order: ' + orderId);
   const executedBookAmount = await executedBookAmounts(web3, orderId);
+  const time = Date.now();
   let txId: string | null = null;
   if (executedBookAmount < order.bookAmount && order.endTime > time) {
     const { bookToken, execToken, bookAmount, execAmount, salt } = order;
@@ -141,23 +146,21 @@ export async function cancelLimitOrder(web3: Web3, api: Api, orderId: string, op
   return txId;
 }
 
-export async function prepareMarkerBuyOrder(web3: Web3, api: Api, baseToken: string, quoteToken: string, _baseAmount: string): Promise<PreparedExecution | null> {
+export async function prepareMarkerBuyOrder(web3: Web3, api: Api, baseToken: string, quoteToken: string, _amount: string): Promise<PreparedExecution | null> {
   const bookToken = baseToken;
   const execToken = quoteToken;
-  const _requiredBookAmount = _baseAmount;
   if (bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid token: ' + bookToken);
   const bookDecimals = await decimals(web3, bookToken);
-  const requiredBookAmount = _units(_requiredBookAmount, bookDecimals);
+  const requiredBookAmount = _units(_amount, bookDecimals);
   return await api.prepareExecution(bookToken, execToken, requiredBookAmount);
 }
 
-export async function prepareMarkerSellOrder(web3: Web3, api: Api, baseToken: string, quoteToken: string, _quoteAmount: string): Promise<PreparedExecution | null> {
+export async function prepareMarkerSellOrder(web3: Web3, api: Api, baseToken: string, quoteToken: string, _cost: string): Promise<PreparedExecution | null> {
   const bookToken = quoteToken;
   const execToken = baseToken;
-  const _requiredBookAmount = _quoteAmount;
   if (bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid token: ' + bookToken);
   const bookDecimals = await decimals(web3, bookToken);
-  const requiredBookAmount = _units(_requiredBookAmount, bookDecimals);
+  const requiredBookAmount = _units(_cost, bookDecimals);
   return await api.prepareExecution(bookToken, execToken, requiredBookAmount);
 }
 
