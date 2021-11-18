@@ -14,6 +14,13 @@ type SendOptions = {
 const ABI: AbiItem[] = [
   {
     type: 'function',
+    name: 'decimals',
+    inputs: [],
+    stateMutability: 'view',
+    outputs: [{ type: 'uint8', name: '_decimals' }],
+  },
+  {
+    type: 'function',
     name: 'balanceOf',
     inputs: [{ type: 'address', name: '_account' }],
     stateMutability: 'view',
@@ -52,6 +59,11 @@ async function _filterTxId(event: PromiEvent<Contract>): Promise<string> {
   await event.on('transactionHash', (hash: string) => { txId = hash; });
   if (txId === null) throw new Error('Unknown txId');
   return txId;
+}
+
+export async function decimals(web3: Web3, token: string): Promise<number> {
+  const contract = new web3.eth.Contract(ABI, token);
+  return Number(await contract.methods.decimals().call());
 }
 
 export async function balanceOf(web3: Web3, token: string, account: string): Promise<bigint> {

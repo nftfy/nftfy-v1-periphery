@@ -1,6 +1,6 @@
 import Web3 from 'web3';
 
-import { Order, Api, Db, enableOrderCreation, createLimitSellOrder, cancelLimitOrder, executeMarketOrder, createApi } from './index';
+import { Order, Api, Db, enableOrderCreation, createLimitSellOrder, cancelLimitOrder, prepareMarkerBuyOrder, executeMarketOrder, createApi } from './index';
 import { createDb } from './file-db';
 
 type Network = 'mainnet' | 'kovan';
@@ -38,11 +38,11 @@ async function main(args: string[]): Promise<void> {
   const TEST = '0xfC0d9D4e5821Ee772e6c6dE75256f5c96E545DD0';
 
   if (command === 'unlock') {
-    await enableOrderCreation(web3, TEST);
+    await enableOrderCreation(web3, api, TEST);
   }
   else
   if (command === 'create') {
-    const order = await createLimitSellOrder(web3, api, TEST, ETH, 6000000000000000000n, 100000000000000n); // 6 TEST for 0.0001 ETH
+    const order = await createLimitSellOrder(web3, api, TEST, ETH, '6', '0.0001'); // 6 TEST for 0.0001 ETH
     console.log(order);
   }
   else
@@ -53,7 +53,7 @@ async function main(args: string[]): Promise<void> {
   }
   else
   if (command === 'execute') {
-    const prepared = await api.prepareExecution(TEST, ETH, 9000000000000000000n); // 9 TEST
+    const prepared = await prepareMarkerBuyOrder(web3, api, TEST, ETH, '9'); // 9 TEST
     if (prepared === null) throw new Error('Insufficient liquidity');
     await executeMarketOrder(web3, api, prepared);
   }
