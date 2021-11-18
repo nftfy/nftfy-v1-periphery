@@ -41,13 +41,13 @@ const ABI: AbiItem[] = [
   },
 ];
 
-function currentUser(web3: Web3): string {
+function _currentUser(web3: Web3): string {
   const account = web3.eth.accounts.wallet[0];
   if (account === undefined) throw new Error('No account set');
   return account.address;
 }
 
-async function filterTxId(event: PromiEvent<Contract>): Promise<string> {
+async function _filterTxId(event: PromiEvent<Contract>): Promise<string> {
   let txId: string | null = null;
   await event.on('transactionHash', (hash: string) => { txId = hash; });
   if (txId === null) throw new Error('Unknown txId');
@@ -65,9 +65,9 @@ export async function allowance(web3: Web3, token: string, account: string, spen
 }
 
 export async function approve(web3: Web3, token: string, spender: string, amount: bigint, options: SendOptions = {}): Promise<string> {
-  let { from = currentUser(web3), nonce, gas = 75000, gasPrice, value } = options;
+  let { from = _currentUser(web3), nonce, gas = 75000, gasPrice, value } = options;
   if (typeof gasPrice === 'bigint') gasPrice = String(gasPrice);
   if (typeof value === 'bigint') value = String(value);
   const contract = new web3.eth.Contract(ABI, token);
-  return await filterTxId(contract.methods.approve(spender, amount).send({ from, nonce, gas, gasPrice, value }));
+  return await _filterTxId(contract.methods.approve(spender, amount).send({ from, nonce, gas, gasPrice, value }));
 }
