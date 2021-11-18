@@ -109,12 +109,12 @@ export async function executeMarketOrder(web3: Web3, api: Api, prepared: Prepare
     const requiredExecAmount = await checkOrderExecution(web3, bookToken, execToken, bookAmount, execAmount, maker, salt, requiredBookAmount);
     if (requiredExecAmount <= 0n) throw new Error('Preparation invalidated');
     const value = execToken === '0x0000000000000000000000000000000000000000' ? requiredExecAmount : 0n;
-    await executeOrder(web3, value, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, requiredBookAmount);
+    await executeOrder(web3, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, requiredBookAmount, { value });
   } else {
     const requiredExecAmount = await checkOrdersExecution(web3, bookToken, execToken, bookAmounts, execAmounts, makers, salts, lastRequiredBookAmount);
     if (requiredExecAmount <= 0n) throw new Error('Preparation invalidated');
     const value = execToken === '0x0000000000000000000000000000000000000000' ? requiredExecAmount : 0n;
-    await executeOrders(web3, value, bookToken, execToken, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount);
+    await executeOrders(web3, bookToken, execToken, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount, { value });
   }
   await api.updateOrders(orderIds);
 }

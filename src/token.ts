@@ -3,6 +3,14 @@ import { PromiEvent } from 'web3-core';
 import { Contract } from 'web3-eth-contract';
 import { AbiItem } from 'web3-utils';
 
+type SendOptions = {
+  from?: string;
+  gasPrice?: string | bigint;
+  gas?: number;
+  value?: number | string | bigint;
+  nonce?: number;
+};
+
 const ABI: AbiItem[] = [
   {
     type: 'function',
@@ -56,7 +64,10 @@ export async function allowance(web3: Web3, token: string, account: string, spen
   return BigInt(await contract.methods.allowance(account, spender).call());
 }
 
-export async function approve(web3: Web3, token: string, spender: string, amount: bigint, from = currentUser(web3)): Promise<string> {
+export async function approve(web3: Web3, token: string, spender: string, amount: bigint, options: SendOptions = {}): Promise<string> {
+  let { from = currentUser(web3), nonce, gas = 75000, gasPrice, value } = options;
+  if (typeof gasPrice === 'bigint') gasPrice = String(gasPrice);
+  if (typeof value === 'bigint') value = String(value);
   const contract = new web3.eth.Contract(ABI, token);
-  return await filterTxId(contract.methods.approve(spender, amount).send({ from, gas: 75000 }));
+  return await filterTxId(contract.methods.approve(spender, amount).send({ from, nonce, gas, gasPrice, value }));
 }
