@@ -25,8 +25,9 @@ function _extractSalt(salt: bigint): { startTime: number, endTime: number, rando
 
 async function _validateOrder(web3: Web3, order: Order): Promise<void> {
   if (order.bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid order.bookToken: ' + order.bookToken);
-  if (order.bookAmount <= 0 || order.bookAmount >= 2n ** 256n) throw new Error('Invalid order.bookAmount: ' + order.bookAmount);
-  if (order.execAmount <= 0 || order.execAmount >= 2n ** 256n) throw new Error('Invalid order.execAmount: ' + order.execAmount);
+  if (order.bookAmount <= 0) throw new Error('Invalid order.bookAmount: ' + order.bookAmount);
+  if (order.execAmount <= 0) throw new Error('Invalid order.execAmount: ' + order.execAmount);
+  if (order.bookAmount * order.execAmount >= 2n ** 256n) throw new Error('Numeric overflow');
   if (order.salt < 0 || order.salt >= 2n ** 256n) throw new Error('Invalid order.salt: ' + order.salt);
   const orderId = await generateOrderId(web3, order.bookToken, order.execToken, order.bookAmount, order.execAmount, order.maker, order.salt);
   if (order.orderId !== orderId) throw new Error('Invalid order.orderId: ' + order.orderId);
