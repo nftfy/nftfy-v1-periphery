@@ -19,10 +19,10 @@ function _randomInt(limit = Number.MAX_SAFE_INTEGER): number {
   return Math.floor(Math.random() * limit);
 }
 
-function _currentUser(web3: Web3): string {
-  const account = web3.eth.accounts.wallet[0];
-  if (account === undefined) throw new Error('No account set');
-  return account.address;
+async function _currentUser(web3: Web3): Promise<string> {
+  const [address] = await web3.eth.getAccounts()
+  if (address === undefined) throw new Error('No account set');
+  return address;
 }
 
 async function _signHash(web3: Web3, hash: string): Promise<string> {
@@ -42,7 +42,7 @@ function _generateSalt(startTime: number, endTime: number, random = _randomInt()
 // api used by the frontend
 
 export async function availableBalance(web3: Web3, api: Api, bookToken: string): Promise<bigint> {
-  const maker = _currentUser(web3);
+  const maker = await _currentUser(web3);
   return await api.availableBalance(bookToken, maker);
 }
 
@@ -60,7 +60,7 @@ export async function createLimitBuyOrder(web3: Web3, api: Api, baseToken: strin
   const bookAmount = amount * price / 1000000000000000000n;
   const execAmount = amount;
   const freeBookAmount = bookAmount;
-  const maker = _currentUser(web3);
+  const maker = await _currentUser(web3);
   const time = Date.now();
   const startTime = time;
   const endTime = startTime + duration;
@@ -84,7 +84,7 @@ export async function createLimitSellOrder(web3: Web3, api: Api, baseToken: stri
   const bookAmount = amount;
   const execAmount = amount * price / 1000000000000000000n;
   const freeBookAmount = bookAmount;
-  const maker = _currentUser(web3);
+  const maker = await _currentUser(web3);
   const time = Date.now();
   const startTime = time;
   const endTime = startTime + duration;
@@ -101,7 +101,7 @@ export async function createLimitSellOrder(web3: Web3, api: Api, baseToken: stri
 
 export async function cancelLimitOrder(web3: Web3, api: Api, orderId: string, options: SendOptions = {}): Promise<string | null> {
   const time = Date.now();
-  const maker = _currentUser(web3);
+  const maker = await _currentUser(web3);
   const order = await api.lookupOrder(orderId);
   if (order === null) throw new Error('Unknown order: ' + orderId);
   if (order.maker !== maker) throw new Error('Invalid order: ' + orderId);

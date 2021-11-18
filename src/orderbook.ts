@@ -125,10 +125,10 @@ const ABI: AbiItem[] = [
   },
 ];
 
-function _currentUser(web3: Web3): string {
-  const account = web3.eth.accounts.wallet[0];
-  if (account === undefined) throw new Error('No account set');
-  return account.address;
+async function _currentUser(web3: Web3): Promise<string> {
+  const [address] = await web3.eth.getAccounts()
+  if (address === undefined) throw new Error('No account set');
+  return address;
 }
 
 async function _filterTxId(event: PromiEvent<Contract>): Promise<string> {
@@ -159,7 +159,7 @@ export async function checkOrdersExecution(web3: Web3, bookToken: string, execTo
 }
 
 export async function executeOrder(web3: Web3, bookToken: string, execToken: string, bookAmount: bigint, execAmount: bigint, maker: string, salt: bigint, signature: string, requiredBookAmount: bigint, options: SendOptions = {}): Promise<string> {
-  let { from = _currentUser(web3), nonce, gas = 150000, gasPrice, value } = options;
+  let { from = await _currentUser(web3), nonce, gas = 150000, gasPrice, value } = options;
   if (typeof gasPrice === 'bigint') gasPrice = String(gasPrice);
   if (typeof value === 'bigint') value = String(value);
   const contract = new web3.eth.Contract(ABI, ADDRESS);
@@ -167,7 +167,7 @@ export async function executeOrder(web3: Web3, bookToken: string, execToken: str
 }
 
 export async function executeOrders(web3: Web3, bookToken: string, execToken: string, bookAmounts: bigint[], execAmounts: bigint[], makers: string[], salts: bigint[], signatures: string[], lastRequiredBookAmount: bigint, options: SendOptions = {}): Promise<string> {
-  let { from = _currentUser(web3), nonce, gas = 150000 * salts.length + 50000, gasPrice, value } = options;
+  let { from = await _currentUser(web3), nonce, gas = 150000 * salts.length + 50000, gasPrice, value } = options;
   if (typeof gasPrice === 'bigint') gasPrice = String(gasPrice);
   if (typeof value === 'bigint') value = String(value);
   const contract = new web3.eth.Contract(ABI, ADDRESS);
@@ -176,7 +176,7 @@ export async function executeOrders(web3: Web3, bookToken: string, execToken: st
 }
 
 export async function cancelOrder(web3: Web3, bookToken: string, execToken: string, bookAmount: bigint, execAmount: bigint, salt: bigint, options: SendOptions = {}): Promise<string> {
-  let { from = _currentUser(web3), nonce, gas = 75000, gasPrice, value } = options;
+  let { from = await _currentUser(web3), nonce, gas = 75000, gasPrice, value } = options;
   if (typeof gasPrice === 'bigint') gasPrice = String(gasPrice);
   if (typeof value === 'bigint') value = String(value);
   const contract = new web3.eth.Contract(ABI, ADDRESS);
@@ -184,7 +184,7 @@ export async function cancelOrder(web3: Web3, bookToken: string, execToken: stri
 }
 
 export async function cancelOrders(web3: Web3, bookToken: string, execToken: string, bookAmounts: bigint[], execAmounts: bigint[], salts: bigint[], options: SendOptions = {}): Promise<string> {
-  let { from = _currentUser(web3), nonce, gas = 75000 * salts.length + 25000, gasPrice, value } = options;
+  let { from = await _currentUser(web3), nonce, gas = 75000 * salts.length + 25000, gasPrice, value } = options;
   if (typeof gasPrice === 'bigint') gasPrice = String(gasPrice);
   if (typeof value === 'bigint') value = String(value);
   const contract = new web3.eth.Contract(ABI, ADDRESS);
