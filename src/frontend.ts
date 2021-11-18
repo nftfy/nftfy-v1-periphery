@@ -5,34 +5,50 @@ import { Api } from './backend';
 import { balanceOf, allowance, approve } from './token';
 import { ADDRESS, executedBookAmounts, generateOrderId, checkOrderExecution, checkOrdersExecution, executeOrder, executeOrders, cancelOrder, cancelOrders } from './orderbook';
 
+type SendOptions = {
+  from?: string;
+  gasPrice?: string | bigint;
+  gas?: number;
+  value?: number | string | bigint;
+  nonce?: number;
+};
+
 const DEFAULT_ORDER_DURATION = 100 * 365 * 24 * 60 * 60 * 1000; // 100 years
 
-function randomInt(limit = Number.MAX_SAFE_INTEGER): number {
+function _randomInt(limit = Number.MAX_SAFE_INTEGER): number {
   return Math.floor(Math.random() * limit);
 }
 
-function currentUser(web3: Web3): string {
+function _currentUser(web3: Web3): string {
   const account = web3.eth.accounts.wallet[0];
   if (account === undefined) throw new Error('No account set');
   return account.address;
 }
 
-async function sign(web3: Web3, hash: string): Promise<string> {
+async function _signHash(web3: Web3, hash: string): Promise<string> {
   const account = web3.eth.accounts.wallet[0];
   if (account === undefined) throw new Error('No account set');
   const signature = await web3.eth.personal.sign(hash, account.address, '');
   return signature;
 }
 
-function generateSalt(startTime: number, endTime: number, random = randomInt()): bigint {
-  return BigInt(random) << 128n | BigInt(Math.floor(startTime / 1000)) << 64n | BigInt(Math.floor(endTime / 1000));
+function _generateSalt(startTime: number, endTime: number, random = _randomInt()): bigint {
+  if (startTime < 0 || startTime > Number.MAX_SAFE_INTEGER) throw new Error('Invalid startTime: ' + startTime);
+  if (endTime < 0 || endTime > Number.MAX_SAFE_INTEGER) throw new Error('Invalid endTime: ' + endTime);
+  if (random < 0 || random > Number.MAX_SAFE_INTEGER) throw new Error('Invalid random: ' + random);
+  return BigInt(random) << 128n | BigInt(Math.floor(endTime / 1000)) << 64n | BigInt(Math.floor(startTime / 1000));
 }
 
 // api used by the frontend
 
-export async function enableOrderCreation(web3: Web3, bookToken: string): Promise<void> {
+export async function availableBalance(web3: Web3, api: Api, bookToken: string): Promise<bigint> {
+  const maker = _currentUser(web3);
+  return await api.availableBalance(bookToken, maker);
+}
+
+export async function enableOrderCreation(web3: Web3, bookToken: string, options: SendOptions = {}): Promise<void> {
   if (bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid token: ' + bookToken);
-  await approve(web3, bookToken, ADDRESS, 2n ** 256n - 1n);
+  await approve(web3, bookToken, ADDRESS, 2n ** 256n - 1n, options);
 }
 
 export async function createLimitBuyOrder(web3: Web3, api: Api, baseToken: string, quoteToken: string, amount: bigint, price: bigint, duration = DEFAULT_ORDER_DURATION): Promise<Order> {
@@ -44,15 +60,15 @@ export async function createLimitBuyOrder(web3: Web3, api: Api, baseToken: strin
   const bookAmount = amount * price / 1000000000000000000n;
   const execAmount = amount;
   const freeBookAmount = bookAmount;
-  const maker = currentUser(web3);
+  const maker = _currentUser(web3);
   const time = Date.now();
   const startTime = time;
   const endTime = startTime + duration;
-  const salt = generateSalt(startTime, endTime);
+  const salt = _generateSalt(startTime, endTime);
   const orderId = await generateOrderId(web3, bookToken, execToken, bookAmount, execAmount, maker, salt);
-  const signature = await sign(web3, orderId);
   const available = await api.availableBalance(bookToken, maker);
   if (available < bookAmount) throw new Error('Insufficient balance: ' + available);
+  const signature = await _signHash(web3, orderId);
   price = execAmount * 1000000000000000000n / bookAmount;
   const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price, time, startTime, endTime, freeBookAmount };
   await api.insertOrder(order);
@@ -68,36 +84,44 @@ export async function createLimitSellOrder(web3: Web3, api: Api, baseToken: stri
   const bookAmount = amount;
   const execAmount = amount * price / 1000000000000000000n;
   const freeBookAmount = bookAmount;
-  const maker = currentUser(web3);
+  const maker = _currentUser(web3);
   const time = Date.now();
   const startTime = time;
   const endTime = startTime + duration;
-  const salt = generateSalt(startTime, endTime);
+  const salt = _generateSalt(startTime, endTime);
   const orderId = await generateOrderId(web3, bookToken, execToken, bookAmount, execAmount, maker, salt);
-  const signature = await sign(web3, orderId);
   const available = await api.availableBalance(bookToken, maker);
   if (available < bookAmount) throw new Error('Insufficient balance: ' + available);
+  const signature = await _signHash(web3, orderId);
   price = execAmount * 1000000000000000000n / bookAmount;
   const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price, time, startTime, endTime, freeBookAmount };
   await api.insertOrder(order);
   return order;
 }
 
-export async function cancelLimitOrder(web3: Web3, api: Api, orderId: string): Promise<void> {
-  const maker = currentUser(web3);
+export async function cancelLimitOrder(web3: Web3, api: Api, orderId: string, options: SendOptions = {}): Promise<void> {
+  const time = Date.now();
+  const maker = _currentUser(web3);
   const order = await api.lookupOrder(orderId);
   if (order === null) throw new Error('Unknown order: ' + orderId);
   if (order.maker !== maker) throw new Error('Invalid order: ' + orderId);
   const executedBookAmount = await executedBookAmounts(web3, orderId);
-  if ((executedBookAmount < order.bookAmount) && (order.endTime > Date.now())) {
-    // the order was partially executed, exposed publicly, and needs to be cancelled on-chain
+  if (executedBookAmount < order.bookAmount && order.endTime > time) {
     const { bookToken, execToken, bookAmount, execAmount, salt } = order;
-    await cancelOrder(web3, bookToken, execToken, bookAmount, execAmount, salt);
+    await cancelOrder(web3, bookToken, execToken, bookAmount, execAmount, salt, options);
   }
   await api.updateOrders([orderId]);
 }
 
-export async function executeMarketOrder(web3: Web3, api: Api, prepared: PreparedExecution): Promise<void> {
+export async function prepareMarkerBuyOrder(web3: Web3, api: Api, baseToken: string, quoteToken: string, baseAmount: bigint): Promise<PreparedExecution | null> {
+  return await api.prepareExecution(baseToken, quoteToken, baseAmount);
+}
+
+export async function prepareMarkerSellOrder(web3: Web3, api: Api, baseToken: string, quoteToken: string, quoteAmount: bigint): Promise<PreparedExecution | null> {
+  return await api.prepareExecution(quoteToken, baseToken, quoteAmount);
+}
+
+export async function executeMarketOrder(web3: Web3, api: Api, prepared: PreparedExecution, options: SendOptions = {}): Promise<void> {
   const { bookToken, execToken, orderIds, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount } = prepared;
   if (makers.length === 1) {
     const bookAmount = bookAmounts[0] || 0n;
@@ -109,12 +133,12 @@ export async function executeMarketOrder(web3: Web3, api: Api, prepared: Prepare
     const requiredExecAmount = await checkOrderExecution(web3, bookToken, execToken, bookAmount, execAmount, maker, salt, requiredBookAmount);
     if (requiredExecAmount <= 0n) throw new Error('Preparation invalidated');
     const value = execToken === '0x0000000000000000000000000000000000000000' ? requiredExecAmount : 0n;
-    await executeOrder(web3, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, requiredBookAmount, { value });
+    await executeOrder(web3, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, requiredBookAmount, { value, ...options });
   } else {
     const requiredExecAmount = await checkOrdersExecution(web3, bookToken, execToken, bookAmounts, execAmounts, makers, salts, lastRequiredBookAmount);
     if (requiredExecAmount <= 0n) throw new Error('Preparation invalidated');
     const value = execToken === '0x0000000000000000000000000000000000000000' ? requiredExecAmount : 0n;
-    await executeOrders(web3, bookToken, execToken, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount, { value });
+    await executeOrders(web3, bookToken, execToken, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount, { value, ...options });
   }
   await api.updateOrders(orderIds);
 }
