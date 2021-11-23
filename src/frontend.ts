@@ -5,7 +5,7 @@ import { Api } from './backend';
 import { decimals, balanceOf, allowance, approve } from './token';
 import { ADDRESS, executedBookAmounts, generateOrderId, checkOrderExecution, checkOrdersExecution, executeOrder, executeOrders, cancelOrder, cancelOrders } from './orderbook';
 
-type SendOptions = {
+export type SendOptions = {
   from?: string;
   gasPrice?: string | bigint;
   gas?: number;

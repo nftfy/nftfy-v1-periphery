@@ -3,7 +3,7 @@ import { PromiEvent } from 'web3-core';
 import { Contract } from 'web3-eth-contract';
 import { AbiItem } from 'web3-utils';
 
-type SendOptions = {
+export type SendOptions = {
   from?: string;
   gasPrice?: string | bigint;
   gas?: number;
