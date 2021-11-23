@@ -97,6 +97,7 @@ export interface Api {
   listOrders(maker: string): Promise<Order[]>;
   insertOrder(order: Order): Promise<void>;
   lookupOrder(orderId: string): Promise<Order | null>;
+  lookupOrders(bookToken: string, execToken: string): Promise<Order[]>;
   prepareExecution(bookToken: string, execToken: string, requiredBookAmount: bigint): Promise<PreparedExecution | null>;
   updateOrders(orderIds: string[]): Promise<void>;
 }
@@ -131,6 +132,11 @@ export function createApi(web3: Web3, db: Db): Api {
     return await db.lookupOrder(orderId);
   }
 
+  async function lookupOrders(bookToken: string, execToken: string): Promise<Order[]> {
+    const time = Date.now()
+    return await db.lookupOrders(bookToken, execToken, time);
+  }
+
   async function prepareExecution(bookToken: string, execToken: string, requiredBookAmount: bigint): Promise<PreparedExecution | null> {
     const time = Date.now()
     return await _prepareExecution(web3, db, bookToken, execToken, requiredBookAmount, time);
@@ -146,6 +152,7 @@ export function createApi(web3: Web3, db: Db): Api {
     listOrders,
     insertOrder,
     lookupOrder,
+    lookupOrders,
     prepareExecution,
     updateOrders,
   };

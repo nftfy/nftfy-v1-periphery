@@ -117,6 +117,38 @@ export async function enableOrderCreation(web3: Web3, api: Api, bookToken: strin
   return await approve(web3, bookToken, ADDRESS, 2n ** 256n - 1n, options);
 }
 
+export type OrderbookLine = {
+  amount: string;
+  cost: string;
+};
+
+export type Orderbook = {
+  asks: OrderbookLine[];
+  bids: OrderbookLine[];
+};
+
+export async function getOrderbook(web3: Web3, api: Api, baseToken: string, quoteToken: string): Promise<Orderbook> {
+  const baseDecimals = baseToken === '0x0000000000000000000000000000000000000000' ? 18 : await decimals(web3, baseToken);
+  const quoteDecimals = quoteToken === '0x0000000000000000000000000000000000000000' ? 18 : await decimals(web3, quoteToken);
+  const sellOrders = await api.lookupOrders(baseToken, quoteToken);
+  const buyOrders = await api.lookupOrders(quoteToken, baseToken);
+  const asks = sellOrders.map(({ bookAmount, execAmount, freeBookAmount }) => {
+    const freeExecAmount = freeBookAmount * execAmount / bookAmount;
+    return {
+      amount: _coins(freeBookAmount, baseDecimals),
+      cost: _coins(freeExecAmount, quoteDecimals),
+    };
+  });
+  const bids = buyOrders.map(({ bookAmount, execAmount, freeBookAmount }) => {
+    const freeExecAmount = freeBookAmount * execAmount / bookAmount;
+    return {
+      amount: _coins(freeExecAmount, baseDecimals),
+      cost: _coins(freeBookAmount, quoteDecimals),
+    };
+  });
+  return { asks, bids };
+}
+
 export async function createLimitBuyOrder(web3: Web3, api: Api, baseToken: string, quoteToken: string, _amount: string, _cost: string, duration = DEFAULT_ORDER_DURATION): Promise<string> {
   const bookToken = quoteToken;
   const execToken = baseToken;
