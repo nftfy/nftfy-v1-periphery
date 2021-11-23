@@ -94,6 +94,7 @@ async function _prepareExecution(web3: Web3, db: Db, bookToken: string, execToke
 
 export interface Api {
   availableBalance(bookToken: string, maker: string): Promise<bigint>;
+  listOrders(maker: string): Promise<Order[]>;
   insertOrder(order: Order): Promise<void>;
   lookupOrder(orderId: string): Promise<Order | null>;
   prepareExecution(bookToken: string, execToken: string, requiredBookAmount: bigint): Promise<PreparedExecution | null>;
@@ -104,6 +105,10 @@ export function createApi(web3: Web3, db: Db): Api {
 
   async function availableBalance(bookToken: string, maker: string): Promise<bigint> {
     return await _availableBalance(web3, db, bookToken, maker);
+  }
+
+  async function listOrders(maker: string): Promise<Order[]> {
+    return await db.lookupUserOrders(maker);
   }
 
   async function insertOrder(order: Order): Promise<void> {
@@ -138,6 +143,7 @@ export function createApi(web3: Web3, db: Db): Api {
 
   return {
     availableBalance,
+    listOrders,
     insertOrder,
     lookupOrder,
     prepareExecution,

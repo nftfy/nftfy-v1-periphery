@@ -83,6 +83,24 @@ export function createDb(filename: string): Db {
     return orders;
   }
 
+  // SELECT * FROM orders WHERE maker = %maker ORDER BY time ASC
+  async function lookupUserOrders(maker: string): Promise<Order[]> {
+    const orders = [];
+    for (const bookToken in db) {
+      const level0 = db[bookToken] || {};
+      for (const execToken in level0) {
+        const level1 = level0[execToken] || [];
+        for (const order of level1) {
+          if (order.maker === maker) {
+            orders.push({ ...order });
+          }
+        }
+      }
+    }
+    orders.sort((order1, order2) => order1.time - order2.time);
+    return orders;
+  }
+
   // SELECT SUM(freeBookAmount) FROM orders WHERE bookToken = %bookToken AND maker = %maker
   async function bookSumOrders(bookToken: string, maker: string): Promise<bigint> {
     const level0 = db[bookToken] || (db[bookToken] = {});
@@ -94,5 +112,5 @@ export function createDb(filename: string): Db {
     return sum;
   }
 
-  return { insertOrder, removeOrder, updateOrder, lookupOrder, lookupOrders, bookSumOrders };
+  return { insertOrder, removeOrder, updateOrder, lookupOrder, lookupOrders, lookupUserOrders, bookSumOrders };
 }

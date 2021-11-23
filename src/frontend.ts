@@ -59,9 +59,50 @@ function _generateSalt(startTime: number, endTime: number, random = _randomInt()
 // api used by the frontend
 
 export async function availableBalance(web3: Web3, api: Api, bookToken: string): Promise<string> {
+  if (bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid token: ' + bookToken);
   const maker = await _currentUser(web3);
   const bookDecimals = await decimals(web3, bookToken);
   return _coins(await api.availableBalance(bookToken, maker), bookDecimals);
+}
+
+export type _Order = {
+  orderId: string;
+  bookToken: string;
+  execToken: string;
+  bookAmount: string;
+  execAmount: string;
+  time: number;
+  startTime: number;
+  endTime: number;
+  freeBookAmount: string;
+  active: boolean;
+  scheduled: boolean;
+};
+
+export async function listOrders(web3: Web3, api: Api): Promise<_Order[]> {
+  const now = Date.now();
+  const maker = await _currentUser(web3);
+  const orders = await api.listOrders(maker);
+  const _orders = [];
+  for (const order of orders) {
+    const { orderId, bookToken, execToken, bookAmount, execAmount, time, startTime, endTime, freeBookAmount } = order;
+    const bookDecimals = await decimals(web3, bookToken);
+    const execDecimals = execToken === '0x0000000000000000000000000000000000000000' ? 18 : await decimals(web3, execToken);
+    _orders.push({
+      orderId,
+      bookToken,
+      execToken,
+      bookAmount: _coins(bookAmount, bookDecimals),
+      execAmount: _coins(execAmount, execDecimals),
+      time,
+      startTime,
+      endTime,
+      freeBookAmount: _coins(freeBookAmount, bookDecimals),
+      active: startTime <= now && now < endTime,
+      scheduled: startTime > now,
+    });
+  }
+  return _orders;
 }
 
 export async function requiresEnableOrderCreation(web3: Web3, api: Api, bookToken: string): Promise<boolean> {
