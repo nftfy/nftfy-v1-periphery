@@ -42,11 +42,8 @@ async function _currentUser(web3: Web3): Promise<string> {
   return address;
 }
 
-async function _signHash(web3: Web3, hash: string): Promise<string> {
-  const account = web3.eth.accounts.wallet[0];
-  if (account === undefined) throw new Error('No account set');
-  const signature = await web3.eth.personal.sign(hash, account.address, '');
-  return signature;
+async function _signHash(web3: Web3, hash: string, address: string): Promise<string> {
+  return await web3.eth.personal.sign(hash, address, '');
 }
 
 function _generateSalt(startTime: number, endTime: number, random = _randomInt()): bigint {
@@ -169,7 +166,7 @@ export async function createLimitBuyOrder(web3: Web3, api: Api, baseToken: strin
   const endTime = startTime + duration;
   const salt = _generateSalt(startTime, endTime);
   const orderId = await generateOrderId(web3, bookToken, execToken, bookAmount, execAmount, maker, salt);
-  const signature = await _signHash(web3, orderId);
+  const signature = await _signHash(web3, orderId, maker);
   const price = execAmount * 1000000000000000000n / bookAmount;
   const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price, time, startTime, endTime, freeBookAmount };
   await api.insertOrder(order);
@@ -196,7 +193,7 @@ export async function createLimitSellOrder(web3: Web3, api: Api, baseToken: stri
   const endTime = startTime + duration;
   const salt = _generateSalt(startTime, endTime);
   const orderId = await generateOrderId(web3, bookToken, execToken, bookAmount, execAmount, maker, salt);
-  const signature = await _signHash(web3, orderId);
+  const signature = await _signHash(web3, orderId, maker);
   const price = execAmount * 1000000000000000000n / bookAmount;
   const order = { orderId, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, price, time, startTime, endTime, freeBookAmount };
   await api.insertOrder(order);
