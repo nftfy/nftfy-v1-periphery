@@ -50,7 +50,7 @@ function _generateSalt(startTime: number, endTime: number, random = _randomInt()
   if (startTime < 0 || startTime > Number.MAX_SAFE_INTEGER) throw new Error('Invalid startTime: ' + startTime);
   if (endTime < 0 || endTime > Number.MAX_SAFE_INTEGER) throw new Error('Invalid endTime: ' + endTime);
   if (random < 0 || random > Number.MAX_SAFE_INTEGER) throw new Error('Invalid random: ' + random);
-  return BigInt(random) << 128n | BigInt(Math.floor(endTime / 1000)) << 64n | BigInt(Math.floor(startTime / 1000));
+  return BigInt(random) << 128n | BigInt(Math.floor(startTime / 1000)) << 64n | BigInt(Math.floor(endTime / 1000));
 }
 
 // api used by the frontend

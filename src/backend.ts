@@ -9,10 +9,10 @@ function _recoverSigner(web3: Web3, hash: string, signature: string): string {
   return web3.eth.accounts.recover(hash, signature);
 }
 
-function _extractSalt(salt: bigint): { startTime: number, endTime: number, random: number } {
+function _extractSalt(salt: bigint): { startTime: number; endTime: number; random: number } {
   if (salt < 0) throw new Error('Invalid salt: ' + salt);
-  const _startTime = (salt & (2n ** 64n - 1n)) * 1000n;
-  const _endTime = ((salt >> 64n) & (2n ** 64n - 1n)) * 1000n;
+  const _startTime = ((salt >> 64n) & (2n ** 64n - 1n)) * 1000n;
+  const _endTime = (salt & (2n ** 64n - 1n)) * 1000n;
   const _random = salt >> 128n;
   if (_startTime > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error('Invalid salt.startTime: ' + _startTime);
   if (_endTime > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error('Invalid salt.endTime: ' + _endTime);
