@@ -62,8 +62,9 @@ async function _updateOrders(web3: Web3, db: Db, orderIds: string[], time: numbe
   }
 }
 
-async function _prepareExecution(web3: Web3, db: Db, bookToken: string, execToken: string, requiredBookAmount: bigint, time: number): Promise<PreparedExecution | null> {
+async function _prepareExecution(web3: Web3, db: Db, bookToken: string, execToken: string, requiredBookAmount: bigint, requiredExecAmount: bigint, time: number): Promise<PreparedExecution | null> {
   if (requiredBookAmount <= 0n) throw new Error('Invalid requiredBookAmount: ' + requiredBookAmount);
+  if (requiredExecAmount <= 0n) throw new Error('Invalid requiredExecAmount: ' + requiredExecAmount);
   const orders = await db.lookupOrders(bookToken, execToken, time);
   const orderIds = [];
   const bookAmounts = [];
@@ -75,6 +76,7 @@ async function _prepareExecution(web3: Web3, db: Db, bookToken: string, execToke
   for (const { orderId, bookAmount, execAmount, maker, salt, signature, freeBookAmount } of orders) {
     available[maker] = available[maker] || await _availableBalance(web3, db, bookToken, maker);
     if ((available[maker] || 0n) < 0n) continue;
+    const freeExecAmount = (freeBookAmount * execAmount + bookAmount - 1n) / bookAmount;
     orderIds.push(orderId);
     bookAmounts.push(bookAmount);
     execAmounts.push(execAmount);
@@ -82,8 +84,14 @@ async function _prepareExecution(web3: Web3, db: Db, bookToken: string, execToke
     salts.push(salt);
     signatures.push(signature);
     requiredBookAmount -= freeBookAmount;
+    requiredExecAmount -= freeExecAmount;
     if (requiredBookAmount <= 0n) {
       const lastRequiredBookAmount = freeBookAmount + requiredBookAmount;
+      return { bookToken, execToken, orderIds, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount };
+    }
+    if (requiredExecAmount <= 0n) {
+      const lastRequiredExecAmount = freeExecAmount + requiredExecAmount;
+      const lastRequiredBookAmount = lastRequiredExecAmount * bookAmount / execAmount;
       return { bookToken, execToken, orderIds, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount };
     }
   }
@@ -98,7 +106,7 @@ export interface Api {
   insertOrder(order: Order): Promise<void>;
   lookupOrder(orderId: string): Promise<Order | null>;
   lookupOrders(bookToken: string, execToken: string): Promise<Order[]>;
-  prepareExecution(bookToken: string, execToken: string, requiredBookAmount: bigint): Promise<PreparedExecution | null>;
+  prepareExecution(bookToken: string, execToken: string, requiredBookAmount: bigint, requiredExecAmount: bigint): Promise<PreparedExecution | null>;
   updateOrders(orderIds: string[]): Promise<void>;
 }
 
@@ -137,9 +145,9 @@ export function createApi(web3: Web3, db: Db): Api {
     return await db.lookupOrders(bookToken, execToken, time);
   }
 
-  async function prepareExecution(bookToken: string, execToken: string, requiredBookAmount: bigint): Promise<PreparedExecution | null> {
+  async function prepareExecution(bookToken: string, execToken: string, requiredBookAmount: bigint, requiredExecAmount: bigint): Promise<PreparedExecution | null> {
     const time = Date.now()
-    return await _prepareExecution(web3, db, bookToken, execToken, requiredBookAmount, time);
+    return await _prepareExecution(web3, db, bookToken, execToken, requiredBookAmount, requiredExecAmount, time);
   }
 
   async function updateOrders(orderIds: string[]): Promise<void> {

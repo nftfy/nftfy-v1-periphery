@@ -1,6 +1,6 @@
 import Web3 from 'web3';
 
-import { Order, Api, Db, enableOrderCreation, createLimitSellOrder, cancelLimitOrder, prepareMarkerBuyOrder, executeMarketOrder, createApi } from './index';
+import { Order, Api, Db, enableOrderCreation, createLimitSellOrder, cancelLimitOrder, prepareMarkerBuyOrderFromAmount, executeMarketOrder, createApi } from './index';
 import { createDb } from './file-db';
 
 type Network = 'mainnet' | 'kovan';
@@ -53,7 +53,7 @@ async function main(args: string[]): Promise<void> {
   }
   else
   if (command === 'execute') {
-    const prepared = await prepareMarkerBuyOrder(web3, api, TEST, ETH, '9'); // 9 TEST
+    const prepared = await prepareMarkerBuyOrderFromAmount(web3, api, TEST, ETH, '9'); // 9 TEST
     if (prepared === null) throw new Error('Insufficient liquidity');
     await executeMarketOrder(web3, api, prepared);
   }

@@ -55,8 +55,7 @@ function _generateSalt(startTime: number, endTime: number, random = _randomInt()
 
 // api used by the frontend
 
-export function calculatePrice(quoteToken: string, amount: string, cost: string): string {
-  const quoteDecimals = quoteToken === '0x0000000000000000000000000000000000000000' ? 18 : await decimals(web3, quoteToken);
+export function calculatePrice(amount: string, cost: string): string {
   const _1e18 = 1000000000000000000n;
   return _coins(_units(cost, 18) * _1e18 / _units(amount, 18), 18);
 }
@@ -222,22 +221,38 @@ export async function cancelLimitOrder(web3: Web3, api: Api, orderId: string, op
   return txId;
 }
 
-export async function prepareMarkerBuyOrder(web3: Web3, api: Api, baseToken: string, quoteToken: string, _amount: string): Promise<PreparedExecution | null> {
+export async function prepareMarkerBuyOrderFromCost(web3: Web3, api: Api, baseToken: string, quoteToken: string, _cost: string): Promise<PreparedExecution | null> {
+  const bookToken = baseToken;
+  const execToken = quoteToken;
+  const execDecimals = await decimals(web3, execToken);
+  const requiredExecAmount = _units(_cost, execDecimals);
+  return await api.prepareExecution(bookToken, execToken, 2n ** 256n, requiredExecAmount);
+}
+
+export async function prepareMarkerBuyOrderFromAmount(web3: Web3, api: Api, baseToken: string, quoteToken: string, _amount: string): Promise<PreparedExecution | null> {
   const bookToken = baseToken;
   const execToken = quoteToken;
   if (bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid token: ' + bookToken);
   const bookDecimals = await decimals(web3, bookToken);
   const requiredBookAmount = _units(_amount, bookDecimals);
-  return await api.prepareExecution(bookToken, execToken, requiredBookAmount);
+  return await api.prepareExecution(bookToken, execToken, requiredBookAmount, 2n ** 256n);
 }
 
-export async function prepareMarkerSellOrder(web3: Web3, api: Api, baseToken: string, quoteToken: string, _cost: string): Promise<PreparedExecution | null> {
+export async function prepareMarkerSellOrderFromAmount(web3: Web3, api: Api, baseToken: string, quoteToken: string, _amount: string): Promise<PreparedExecution | null> {
+  const bookToken = quoteToken;
+  const execToken = baseToken;
+  const execDecimals = await decimals(web3, execToken);
+  const requiredExecAmount = _units(_amount, execDecimals);
+  return await api.prepareExecution(bookToken, execToken, 2n ** 256n, requiredExecAmount);
+}
+
+export async function prepareMarkerSellOrderFromCost(web3: Web3, api: Api, baseToken: string, quoteToken: string, _cost: string): Promise<PreparedExecution | null> {
   const bookToken = quoteToken;
   const execToken = baseToken;
   if (bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid token: ' + bookToken);
   const bookDecimals = await decimals(web3, bookToken);
   const requiredBookAmount = _units(_cost, bookDecimals);
-  return await api.prepareExecution(bookToken, execToken, requiredBookAmount);
+  return await api.prepareExecution(bookToken, execToken, requiredBookAmount, 2n ** 256n);
 }
 
 export type ExecutionEstimate = {
