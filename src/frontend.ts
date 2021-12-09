@@ -3,7 +3,7 @@ import Web3 from 'web3';
 import { Order, PreparedExecution } from './types';
 import { Api } from './backend';
 import { decimals, balanceOf, allowance, approve } from './token';
-import { ADDRESS, executedBookAmounts, generateOrderId, checkOrderExecution, checkOrdersExecution, executeOrder, executeOrders, cancelOrder, cancelOrders } from './orderbook';
+import { ADDRESS, fee, executedBookAmounts, generateOrderId, checkOrderExecution, checkOrdersExecution, executeOrder, executeOrders, cancelOrder, cancelOrders } from './orderbook';
 
 export type SendOptions = {
   from?: string;
@@ -234,6 +234,27 @@ export async function prepareMarkerSellOrder(web3: Web3, api: Api, baseToken: st
   return await api.prepareExecution(bookToken, execToken, requiredBookAmount);
 }
 
+export type ExecutionEstimate = {
+  bookAmount: string;
+  execAmount: string;
+  execFeeAmount: string;
+};
+
+export async function estimateMarketOrderExecution(web3: Web3, api: Api, prepared: PreparedExecution, options: SendOptions = {}): Promise<ExecutionEstimate> {
+  const { bookToken, execToken, bookAmounts, execAmounts, makers, salts, lastRequiredBookAmount } = prepared;
+  const bookDecimals = await decimals(web3, bookToken);
+  const execDecimals = await decimals(web3, execToken);
+  const _fee = await fee(web3);
+  const _1e18 = 1000000000000000000n;
+  const requiredBookAmount = lastRequiredBookAmount;
+  const requiredExecAmount = await checkOrdersExecution(web3, bookToken, execToken, bookAmounts, execAmounts, makers, salts, requiredBookAmount);
+  if (requiredExecAmount <= 0n) throw new Error('Preparation invalidated');
+  const bookAmount = _coins(requiredBookAmount, bookDecimals);
+  const execAmount = _coins(requiredExecAmount, execDecimals);
+  const execFeeAmount = _coins(requiredExecAmount * _fee / _1e18, execDecimals);
+  return { bookAmount, execAmount, execFeeAmount };
+}
+
 export async function executeMarketOrder(web3: Web3, api: Api, prepared: PreparedExecution, options: SendOptions = {}): Promise<string> {
   const { bookToken, execToken, orderIds, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount } = prepared;
   let txId: string;
@@ -249,7 +270,8 @@ export async function executeMarketOrder(web3: Web3, api: Api, prepared: Prepare
     const value = execToken === '0x0000000000000000000000000000000000000000' ? requiredExecAmount : 0n;
     txId = await executeOrder(web3, bookToken, execToken, bookAmount, execAmount, maker, salt, signature, requiredBookAmount, { value, ...options });
   } else {
-    const requiredExecAmount = await checkOrdersExecution(web3, bookToken, execToken, bookAmounts, execAmounts, makers, salts, lastRequiredBookAmount);
+    const requiredBookAmount = lastRequiredBookAmount;
+    const requiredExecAmount = await checkOrdersExecution(web3, bookToken, execToken, bookAmounts, execAmounts, makers, salts, requiredBookAmount);
     if (requiredExecAmount <= 0n) throw new Error('Preparation invalidated');
     const value = execToken === '0x0000000000000000000000000000000000000000' ? requiredExecAmount : 0n;
     txId = await executeOrders(web3, bookToken, execToken, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount, { value, ...options });

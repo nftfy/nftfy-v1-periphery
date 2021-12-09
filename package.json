@@ -10,7 +10,7 @@
     "build/**/*.js",
     "build/**/*.json"
   ],
-  "peerDependencies": {
+  "dependencies": {
     "web3": "^1.6.1"
   },
   "devDependencies": {

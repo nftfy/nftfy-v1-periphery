@@ -16,6 +16,13 @@ export const ADDRESS = '0x9e2873c1c89696987F671861901A06Ad7Cb97f8C';
 const ABI: AbiItem[] = [
   {
     type: 'function',
+    name: 'fee',
+    inputs: [],
+    stateMutability: 'view',
+    outputs: [{ type: 'uint256', name: '_fee' }],
+  },
+  {
+    type: 'function',
     name: 'executedBookAmounts',
     inputs: [{ type: 'bytes32', name: '_orderId' }],
     stateMutability: 'view',
@@ -136,6 +143,11 @@ async function _filterTxId(event: PromiEvent<Contract>): Promise<string> {
   await event.on('transactionHash', (hash: string) => { txId = hash; });
   if (txId === null) throw new Error('Unknown txId');
   return txId;
+}
+
+export async function fee(web3: Web3): Promise<bigint> {
+  const contract = new web3.eth.Contract(ABI, ADDRESS);
+  return BigInt(await contract.methods.fee().call());
 }
 
 export async function executedBookAmounts(web3: Web3, orderId: string): Promise<bigint> {
