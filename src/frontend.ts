@@ -55,6 +55,12 @@ function _generateSalt(startTime: number, endTime: number, random = _randomInt()
 
 // api used by the frontend
 
+export function calculatePrice(quoteToken: string, amount: string, cost: string): string {
+  const quoteDecimals = quoteToken === '0x0000000000000000000000000000000000000000' ? 18 : await decimals(web3, quoteToken);
+  const _1e18 = 1000000000000000000n;
+  return _coins(_units(cost, 18) * _1e18 / _units(amount, 18), 18);
+}
+
 export async function availableBalance(web3: Web3, api: Api, bookToken: string): Promise<string> {
   if (bookToken === '0x0000000000000000000000000000000000000000') throw new Error('Invalid token: ' + bookToken);
   const maker = await _currentUser(web3);
@@ -243,7 +249,7 @@ export type ExecutionEstimate = {
 export async function estimateMarketOrderExecution(web3: Web3, api: Api, prepared: PreparedExecution, options: SendOptions = {}): Promise<ExecutionEstimate> {
   const { bookToken, execToken, bookAmounts, execAmounts, makers, salts, lastRequiredBookAmount } = prepared;
   const bookDecimals = await decimals(web3, bookToken);
-  const execDecimals = await decimals(web3, execToken);
+  const execDecimals = execToken === '0x0000000000000000000000000000000000000000' ? 18 : await decimals(web3, execToken);
   const _fee = await fee(web3);
   const _1e18 = 1000000000000000000n;
   const requiredBookAmount = lastRequiredBookAmount;
