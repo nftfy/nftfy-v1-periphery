@@ -9,6 +9,7 @@ export type SendOptions = {
   gas?: number;
   value?: number | string | bigint;
   nonce?: number;
+  callback?: (error: Error, tx: string) => void;
 };
 
 export const ADDRESS = '0x9e2873c1c89696987F671861901A06Ad7Cb97f8C';
@@ -140,7 +141,7 @@ async function _currentUser(web3: Web3): Promise<string> {
 
 async function _filterTxId(event: PromiEvent<Contract>): Promise<string> {
   let txId: string | null = null;
-  await event.on('transactionHash', (hash: string) => { txId = hash; });
+  await event.on('receipt', ({ transactionHash }) => { txId = transactionHash; });
   if (txId === null) throw new Error('Unknown txId');
   return txId;
 }
@@ -175,16 +176,16 @@ export async function executeOrder(web3: Web3, bookToken: string, execToken: str
   if (typeof gasPrice === 'bigint') gasPrice = String(gasPrice);
   if (typeof value === 'bigint') value = String(value);
   const contract = new web3.eth.Contract(ABI, ADDRESS);
-  return await _filterTxId(contract.methods.executeOrder(bookToken, execToken, bookAmount, execAmount, maker, salt, signature, requiredBookAmount).send({ from, nonce, gas, gasPrice, value }));
+  return await _filterTxId(contract.methods.executeOrder(bookToken, execToken, bookAmount, execAmount, maker, salt, signature, requiredBookAmount).send({ from, nonce, gas, gasPrice, value }, options.callback));
 }
 
 export async function executeOrders(web3: Web3, bookToken: string, execToken: string, bookAmounts: bigint[], execAmounts: bigint[], makers: string[], salts: bigint[], signatures: string[], lastRequiredBookAmount: bigint, options: SendOptions = {}): Promise<string> {
-  let { from = await _currentUser(web3), nonce, gas = 200000 * salts.length + 100000, gasPrice, value } = options;
+  let { from = await _currentUser(web3), nonce, gas = 240000 * salts.length + 100000, gasPrice, value } = options;
   if (typeof gasPrice === 'bigint') gasPrice = String(gasPrice);
   if (typeof value === 'bigint') value = String(value);
   const contract = new web3.eth.Contract(ABI, ADDRESS);
   const siglist = '0x' + signatures.map((signature) => signature.substr(2)).join('');
-  return await _filterTxId(contract.methods.executeOrders(bookToken, execToken, bookAmounts, execAmounts, makers, salts, siglist, lastRequiredBookAmount).send({ from, nonce, gas, gasPrice, value }));
+  return await _filterTxId(contract.methods.executeOrders(bookToken, execToken, bookAmounts, execAmounts, makers, salts, siglist, lastRequiredBookAmount).send({ from, nonce, gas, gasPrice, value }, options.callback));
 }
 
 export async function cancelOrder(web3: Web3, bookToken: string, execToken: string, bookAmount: bigint, execAmount: bigint, salt: bigint, options: SendOptions = {}): Promise<string> {
@@ -192,7 +193,7 @@ export async function cancelOrder(web3: Web3, bookToken: string, execToken: stri
   if (typeof gasPrice === 'bigint') gasPrice = String(gasPrice);
   if (typeof value === 'bigint') value = String(value);
   const contract = new web3.eth.Contract(ABI, ADDRESS);
-  return await _filterTxId(contract.methods.cancelOrder(bookToken, execToken, bookAmount, execAmount, salt).send({ from, nonce, gas, gasPrice, value }));
+  return await _filterTxId(contract.methods.cancelOrder(bookToken, execToken, bookAmount, execAmount, salt).send({ from, nonce, gas, gasPrice, value }, options.callback));
 }
 
 export async function cancelOrders(web3: Web3, bookToken: string, execToken: string, bookAmounts: bigint[], execAmounts: bigint[], salts: bigint[], options: SendOptions = {}): Promise<string> {
@@ -200,5 +201,5 @@ export async function cancelOrders(web3: Web3, bookToken: string, execToken: str
   if (typeof gasPrice === 'bigint') gasPrice = String(gasPrice);
   if (typeof value === 'bigint') value = String(value);
   const contract = new web3.eth.Contract(ABI, ADDRESS);
-  return await _filterTxId(contract.methods.cancelOrders(bookToken, execToken, bookAmounts, execAmounts, salts).send({ from, nonce, gas, gasPrice, value }));
+  return await _filterTxId(contract.methods.cancelOrders(bookToken, execToken, bookAmounts, execAmounts, salts).send({ from, nonce, gas, gasPrice, value }, options.callback));
 }

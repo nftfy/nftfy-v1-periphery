@@ -9,6 +9,7 @@ export type SendOptions = {
   gas?: number;
   value?: number | string | bigint;
   nonce?: number;
+  callback?: (error: Error, tx: string) => void;
 };
 
 const ABI: AbiItem[] = [
@@ -56,7 +57,7 @@ async function _currentUser(web3: Web3): Promise<string> {
 
 async function _filterTxId(event: PromiEvent<Contract>): Promise<string> {
   let txId: string | null = null;
-  await event.on('transactionHash', (hash: string) => { txId = hash; });
+  await event.on('receipt', ({ transactionHash }) => { txId = transactionHash; });
   if (txId === null) throw new Error('Unknown txId');
   return txId;
 }
@@ -81,5 +82,5 @@ export async function approve(web3: Web3, token: string, spender: string, amount
   if (typeof gasPrice === 'bigint') gasPrice = String(gasPrice);
   if (typeof value === 'bigint') value = String(value);
   const contract = new web3.eth.Contract(ABI, token);
-  return await _filterTxId(contract.methods.approve(spender, amount).send({ from, nonce, gas, gasPrice, value }));
+  return await _filterTxId(contract.methods.approve(spender, amount).send({ from, nonce, gas, gasPrice, value }, options.callback));
 }
