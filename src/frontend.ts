@@ -11,6 +11,7 @@ export type SendOptions = {
   gas?: number;
   value?: number | string | bigint;
   nonce?: number;
+  callback?: (error: Error, tx: string) => void;
 };
 
 const DEFAULT_ORDER_DURATION = 100 * 365 * 24 * 60 * 60 * 1000; // 100 years
