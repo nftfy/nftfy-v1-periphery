@@ -56,9 +56,12 @@ function _generateSalt(startTime: number, endTime: number, random = _randomInt()
 
 // api used by the frontend
 
-export function calculatePrice(amount: string, cost: string): string {
+export function calculatePrice(amount: string, cost: string): string | null {
+  const _amount = _units(amount, 18);
+  if (_amount === 0n) return null;
+  const _cost = _units(cost, 18);
   const _1e18 = 1000000000000000000n;
-  return _coins(_units(cost, 18) * _1e18 / _units(amount, 18), 18);
+  return _coins(_cost * _1e18 / _amount, 18);
 }
 
 export async function availableBalance(web3: Web3, api: Api, bookToken: string): Promise<string> {
@@ -123,7 +126,7 @@ export async function enableOrderCreation(web3: Web3, api: Api, bookToken: strin
 export type OrderbookLine = {
   amount: string;
   cost: string;
-  price: string;
+  price: string | null;
 };
 
 export type Orderbook = {
