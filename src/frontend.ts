@@ -151,8 +151,8 @@ export async function getOrderbook(web3: Web3, api: Api, baseToken: string, quot
     const execAmount = _line1.execAmount + _line2.execAmount;
     return { bookAmount, execAmount };
   };
-  const _askSummary = _asks.reduce(lineAcc);
-  const _bidSummary = _bids.reduce(lineAcc);
+  const _askSummary = _asks.reduce(lineAcc, { bookAmount: 0n, execAmount: 0n });
+  const _bidSummary = _bids.reduce(lineAcc, { bookAmount: 0n, execAmount: 0n });
   function askCalc(_line: _OrderbookLine): OrderbookLine {
     const amount = _coins(_line.bookAmount, baseDecimals);
     const cost = _coins(_line.execAmount, quoteDecimals);
