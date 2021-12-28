@@ -14,7 +14,7 @@
     "web3": "^1.6.1"
   },
   "devDependencies": {
-    "@openzeppelin/contracts": "3.3.0",
+    "@openzeppelin/contracts": "4.4.1",
     "@truffle/hdwallet-provider": "^1.2.2",
     "dotenv": "^8.2.0",
     "ganache-cli": "^6.12.2",
