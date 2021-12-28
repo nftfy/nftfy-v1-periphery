@@ -123,11 +123,14 @@ export async function enableOrderCreation(web3: Web3, api: Api, bookToken: strin
 export type OrderbookLine = {
   amount: string;
   cost: string;
+  price: string;
 };
 
 export type Orderbook = {
   asks: OrderbookLine[];
   bids: OrderbookLine[];
+  askSummary: OrderbookLine;
+  bidSummary: OrderbookLine;
 };
 
 export async function getOrderbook(web3: Web3, api: Api, baseToken: string, quoteToken: string): Promise<Orderbook> {
@@ -135,21 +138,38 @@ export async function getOrderbook(web3: Web3, api: Api, baseToken: string, quot
   const quoteDecimals = quoteToken === '0x0000000000000000000000000000000000000000' ? 18 : await decimals(web3, quoteToken);
   const sellOrders = await api.lookupOrders(baseToken, quoteToken);
   const buyOrders = await api.lookupOrders(quoteToken, baseToken);
-  const asks = sellOrders.map(({ bookAmount, execAmount, freeBookAmount }) => {
-    const freeExecAmount = freeBookAmount * execAmount / bookAmount;
-    return {
-      amount: _coins(freeBookAmount, baseDecimals),
-      cost: _coins(freeExecAmount, quoteDecimals),
-    };
-  });
-  const bids = buyOrders.map(({ bookAmount, execAmount, freeBookAmount }) => {
-    const freeExecAmount = freeBookAmount * execAmount / bookAmount;
-    return {
-      amount: _coins(freeExecAmount, baseDecimals),
-      cost: _coins(freeBookAmount, quoteDecimals),
-    };
-  });
-  return { asks, bids };
+  type _OrderbookLine = { bookAmount: bigint, execAmount: bigint };
+  function lineNew(order: Order): _OrderbookLine {
+    const bookAmount = order.freeBookAmount;
+    const execAmount = (bookAmount * order.execAmount + order.bookAmount - 1n) / order.bookAmount;
+    return { bookAmount, execAmount };
+  }
+  const _asks = sellOrders.map(lineNew);
+  const _bids = buyOrders.map(lineNew);
+  function lineAcc(_line1: _OrderbookLine, _line2: _OrderbookLine): _OrderbookLine {
+    const bookAmount = _line1.bookAmount + _line2.bookAmount;
+    const execAmount = _line1.execAmount + _line2.execAmount;
+    return { bookAmount, execAmount };
+  };
+  const _askSummary = _asks.reduce(lineAcc);
+  const _bidSummary = _bids.reduce(lineAcc);
+  function askCalc(_line: _OrderbookLine): OrderbookLine {
+    const amount = _coins(_line.bookAmount, baseDecimals);
+    const cost = _coins(_line.execAmount, quoteDecimals);
+    const price = calculatePrice(amount, cost);
+    return { amount, cost, price };
+  }
+  function bidCalc(_line: _OrderbookLine): OrderbookLine {
+    const amount = _coins(_line.execAmount, baseDecimals);
+    const cost = _coins(_line.bookAmount, quoteDecimals);
+    const price = calculatePrice(amount, cost);
+    return { amount, cost, price };
+  }
+  const asks = _asks.map(askCalc);
+  const bids = _bids.map(bidCalc);
+  const askSummary = askCalc(_askSummary);
+  const bidSummary = bidCalc(_bidSummary);
+  return { asks, bids, askSummary, bidSummary };
 }
 
 export async function createLimitBuyOrder(web3: Web3, api: Api, baseToken: string, quoteToken: string, _amount: string, _cost: string, duration = DEFAULT_ORDER_DURATION): Promise<string> {
