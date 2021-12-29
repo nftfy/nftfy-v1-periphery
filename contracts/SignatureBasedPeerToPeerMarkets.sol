@@ -13,6 +13,7 @@ contract SignatureBasedPeerToPeerMarkets is ReentrancyGuard
 	using SafeMath for uint256;
 	using SafeERC20 for IERC20;
 	using Address for address payable;
+	using ECDSA for bytes32;
 
 	mapping (bytes32 => uint256) public executedBookAmounts;
 
@@ -185,7 +186,7 @@ contract SignatureBasedPeerToPeerMarkets is ReentrancyGuard
 
 	function _recoverSigner(bytes32 _hash, bytes memory _signature) internal pure returns (address _signer)
 	{
-		return ECDSA.recover(ECDSA.toEthSignedMessageHash(_hash), _signature);
+		return _hash.toEthSignedMessageHash().recover(_signature);
 	}
 
 	function _chainId() internal pure returns (uint256 _chainid)
