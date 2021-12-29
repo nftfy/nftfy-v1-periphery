@@ -46,16 +46,17 @@ contract SignatureBasedPeerToPeerMarkets is ReentrancyGuard
 	// availability may not be accurate for multiple orders of the same maker
 	function checkOrdersExecution(address _bookToken, address _execToken, uint256[] calldata _bookAmounts, uint256[] calldata _execAmounts, address payable[] calldata _makers, uint256[] calldata _salts, uint256 _lastRequiredBookAmount) external view returns (uint256 _totalExecAmount)
 	{
-		if (_makers.length == 0) return 0;
+		uint256 _length = _makers.length;
+		if (_length == 0) return 0;
 		_totalExecAmount = 0;
-		for (uint256 _i = 0; _i < _makers.length - 1; _i++) {
+		for (uint256 _i = 0; _i < _length - 1; _i++) {
 			uint256 _localExecAmount = _checkOrderExecution(_bookToken, _execToken, _bookAmounts[_i], _execAmounts[_i], _makers[_i], _salts[_i], uint256(-1));
 			uint256 _newTotalExecAmount = _totalExecAmount + _localExecAmount;
 			if (_newTotalExecAmount <= _totalExecAmount) return 0;
 			_totalExecAmount = _newTotalExecAmount;
 		}
 		{
-			uint256 _i = _makers.length - 1;
+			uint256 _i = _length - 1;
 			uint256 _localExecAmount = _checkOrderExecution(_bookToken, _execToken, _bookAmounts[_i], _execAmounts[_i], _makers[_i], _salts[_i], _lastRequiredBookAmount);
 			uint256 _newTotalExecAmount = _totalExecAmount + _localExecAmount;
 			if (_newTotalExecAmount <= _totalExecAmount) return 0;
@@ -94,18 +95,19 @@ contract SignatureBasedPeerToPeerMarkets is ReentrancyGuard
 		}
 	}
 
-	function executeOrders(address _bookToken, address _execToken, uint256[] calldata _bookAmounts, uint256[] calldata _execAmounts, address payable[] memory _makers, uint256[] memory _salts, bytes memory _signatures, uint256 _lastRequiredBookAmount) external payable nonReentrant
+	function executeOrders(address _bookToken, address _execToken, uint256[] memory _bookAmounts, uint256[] memory _execAmounts, address payable[] memory _makers, uint256[] memory _salts, bytes memory _signatures, uint256 _lastRequiredBookAmount) external payable nonReentrant
 	{
 		address payable _taker = msg.sender;
-		require(_makers.length > 0, "invalid length");
+		uint256 _length = _makers.length;
+		require(_length > 0, "invalid length");
 		uint256 _totalExecFeeAmount = 0;
-		for (uint256 _i = 0; _i < _makers.length - 1; _i++) {
+		for (uint256 _i = 0; _i < _length - 1; _i++) {
 			bytes memory _signature = _extractSignature(_signatures, _i);
 			uint256 _requiredExecFeeAmount = _executeOrder(_bookToken, _execToken, _bookAmounts[_i], _execAmounts[_i], _makers[_i], _salts[_i], _signature, _taker, uint256(-1));
 			_totalExecFeeAmount = _totalExecFeeAmount.add(_requiredExecFeeAmount);
 		}
 		{
-			uint256 _i = _makers.length - 1;
+			uint256 _i = _length - 1;
 			bytes memory _signature = _extractSignature(_signatures, _i);
 			uint256 _requiredExecFeeAmount = _executeOrder(_bookToken, _execToken, _bookAmounts[_i], _execAmounts[_i], _makers[_i], _salts[_i], _signature, _taker, _lastRequiredBookAmount);
 			_totalExecFeeAmount = _totalExecFeeAmount.add(_requiredExecFeeAmount);
