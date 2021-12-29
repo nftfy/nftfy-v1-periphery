@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.6.0;
 
-import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 import { ECDSA } from "@openzeppelin/contracts/cryptography/ECDSA.sol";
+import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
@@ -10,10 +10,10 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 
 contract SignatureBasedPeerToPeerMarkets is ReentrancyGuard
 {
-	using SafeMath for uint256;
-	using SafeERC20 for IERC20;
 	using Address for address payable;
 	using ECDSA for bytes32;
+	using SafeERC20 for IERC20;
+	using SafeMath for uint256;
 
 	bytes32 constant TYPEHASH = keccak256("Order(address,address,uint256,uint256,address,uint256)");
 
@@ -23,11 +23,6 @@ contract SignatureBasedPeerToPeerMarkets is ReentrancyGuard
 	address payable public immutable vault;
 
 	uint256 private immutable chainId_;
-
-	// parameter variables of _executeOrder, avoids stack too deep error, protected by reentrancy guard
-	address private bookToken_;
-	address private execToken_;
-	uint256 private totalExecFeeAmount_;
 
 	constructor (uint256 _fee, address payable _vault) public
 	{
@@ -48,9 +43,9 @@ contract SignatureBasedPeerToPeerMarkets is ReentrancyGuard
 		return _checkOrderExecution(_bookToken, _execToken, _bookAmount, _execAmount, _maker, _salt, _requiredBookAmount);
 	}
 
+	// availability may not be accurate for multiple orders of the same maker
 	function checkOrdersExecution(address _bookToken, address _execToken, uint256[] calldata _bookAmounts, uint256[] calldata _execAmounts, address payable[] calldata _makers, uint256[] calldata _salts, uint256 _lastRequiredBookAmount) external view returns (uint256 _totalExecAmount)
 	{
-		// not accurate if duplicate maker orders
 		if (_makers.length == 0) return 0;
 		_totalExecAmount = 0;
 		for (uint256 _i = 0; _i < _makers.length - 1; _i++) {
@@ -90,73 +85,72 @@ contract SignatureBasedPeerToPeerMarkets is ReentrancyGuard
 	function executeOrder(address _bookToken, address _execToken, uint256 _bookAmount, uint256 _execAmount, address payable _maker, uint256 _salt, bytes calldata _signature, uint256 _requiredBookAmount) external payable nonReentrant
 	{
 		address payable _taker = msg.sender;
-		bookToken_ = _bookToken;
-		execToken_ = _execToken;
-		_executeOrder(_bookAmount, _execAmount, _maker, _salt, _signature, _taker, _requiredBookAmount);
-		if (execToken_ == address(0)) {
-			vault.sendValue(totalExecFeeAmount_);
-			require(address(this).balance == 0);
+		uint256 _totalExecFeeAmount = _executeOrder(_bookToken, _execToken, _bookAmount, _execAmount, _maker, _salt, _signature, _taker, _requiredBookAmount);
+		if (_execToken == address(0)) {
+			vault.sendValue(_totalExecFeeAmount);
+			require(address(this).balance == 0, "excess value");
 		} else {
-			IERC20(execToken_).safeTransferFrom(_taker, vault, totalExecFeeAmount_);
+			IERC20(_execToken).safeTransferFrom(_taker, vault, _totalExecFeeAmount);
 		}
-		totalExecFeeAmount_ = 0;
 	}
 
-	function executeOrders(address _bookToken, address _execToken, uint256[] calldata _bookAmounts, uint256[] calldata _execAmounts, address payable[] calldata _makers, uint256[] calldata _salts, bytes calldata _signatures, uint256 _lastRequiredBookAmount) external payable nonReentrant
+	function executeOrders(address _bookToken, address _execToken, uint256[] calldata _bookAmounts, uint256[] calldata _execAmounts, address payable[] memory _makers, uint256[] memory _salts, bytes memory _signatures, uint256 _lastRequiredBookAmount) external payable nonReentrant
 	{
 		address payable _taker = msg.sender;
 		require(_makers.length > 0, "invalid length");
-		bookToken_ = _bookToken;
-		execToken_ = _execToken;
+		uint256 _totalExecFeeAmount = 0;
 		for (uint256 _i = 0; _i < _makers.length - 1; _i++) {
 			bytes memory _signature = _extractSignature(_signatures, _i);
-			_executeOrder(_bookAmounts[_i], _execAmounts[_i], _makers[_i], _salts[_i], _signature, _taker, uint256(-1));
+			uint256 _requiredExecFeeAmount = _executeOrder(_bookToken, _execToken, _bookAmounts[_i], _execAmounts[_i], _makers[_i], _salts[_i], _signature, _taker, uint256(-1));
+			_totalExecFeeAmount = _totalExecFeeAmount.add(_requiredExecFeeAmount);
 		}
 		{
 			uint256 _i = _makers.length - 1;
 			bytes memory _signature = _extractSignature(_signatures, _i);
-			_executeOrder(_bookAmounts[_i], _execAmounts[_i], _makers[_i], _salts[_i], _signature, _taker, _lastRequiredBookAmount);
+			uint256 _requiredExecFeeAmount = _executeOrder(_bookToken, _execToken, _bookAmounts[_i], _execAmounts[_i], _makers[_i], _salts[_i], _signature, _taker, _lastRequiredBookAmount);
+			_totalExecFeeAmount = _totalExecFeeAmount.add(_requiredExecFeeAmount);
 		}
-		if (execToken_ == address(0)) {
-			vault.sendValue(totalExecFeeAmount_);
+		if (_execToken == address(0)) {
+			vault.sendValue(_totalExecFeeAmount);
 			require(address(this).balance == 0);
 		} else {
-			IERC20(execToken_).safeTransferFrom(_taker, vault, totalExecFeeAmount_);
+			IERC20(_execToken).safeTransferFrom(_taker, vault, _totalExecFeeAmount);
 		}
-		totalExecFeeAmount_ = 0;
 	}
 
-	function _executeOrder(uint256 _bookAmount, uint256 _execAmount, address payable _maker, uint256 _salt, bytes memory _signature, address payable _taker, uint256 _requiredBookAmount) internal
+	function _executeOrder(address _bookToken, address _execToken, uint256 _bookAmount, uint256 _execAmount, address payable _maker, uint256 _salt, bytes memory _signature, address payable _taker, uint256 _requiredBookAmount) internal returns (uint256 _requiredExecFeeAmount)
 	{
 		require(_requiredBookAmount > 0, "invalid amount");
-		bytes32 _orderId = generateOrderId(bookToken_, execToken_, _bookAmount, _execAmount, _maker, _salt);
+		bytes32 _orderId = generateOrderId(_bookToken, _execToken, _bookAmount, _execAmount, _maker, _salt);
 		require(_maker == _recoverSigner(_orderId, _signature), "access denied");
-		require(executedBookAmounts[_orderId] < _bookAmount, "inactive order");
+		uint256 _requiredExecNetAmount;
 		{
-			uint64 _startTime = uint64(_salt >> 64);
-			uint64 _endTime = uint64(_salt);
-			require(_startTime <= now && now < _endTime, "invalid timeframe");
-		}
-		{
-			uint256 _availableBookAmount = _bookAmount - executedBookAmounts[_orderId];
+			uint256 _executedBookAmount = executedBookAmounts[_orderId];
+			require(_executedBookAmount < _bookAmount, "inactive order");
+			{
+				uint64 _startTime = uint64(_salt >> 64);
+				uint64 _endTime = uint64(_salt);
+				require(_startTime <= now && now < _endTime, "invalid timeframe");
+			}
+			uint256 _availableBookAmount = _bookAmount - _executedBookAmount;
 			if (_requiredBookAmount == uint256(-1)) {
 				_requiredBookAmount = _availableBookAmount;
 			} else {
 				require(_requiredBookAmount <= _availableBookAmount, "insufficient liquidity");
 			}
+			uint256 _requiredExecAmount = _requiredBookAmount.mul(_execAmount).add(_bookAmount - 1) / _bookAmount;
+			_requiredExecFeeAmount = _requiredExecAmount.mul(fee) / 1e18;
+			_requiredExecNetAmount = _requiredExecAmount - _requiredExecFeeAmount;
+			executedBookAmounts[_orderId] = _executedBookAmount - _requiredBookAmount;
 		}
-		uint256 _requiredExecAmount = _requiredBookAmount.mul(_execAmount).add(_bookAmount - 1) / _bookAmount;
-		uint256 _requiredExecFeeAmount = _requiredExecAmount.mul(fee) / 1e18;
-		uint256 _requiredExecNetAmount = _requiredExecAmount - _requiredExecFeeAmount;
-		executedBookAmounts[_orderId] += _requiredBookAmount;
-		totalExecFeeAmount_ = totalExecFeeAmount_.add(_requiredExecFeeAmount);
-		IERC20(bookToken_).safeTransferFrom(_maker, _taker, _requiredBookAmount);
-		if (execToken_ == address(0)) {
+		IERC20(_bookToken).safeTransferFrom(_maker, _taker, _requiredBookAmount);
+		if (_execToken == address(0)) {
 			_maker.sendValue(_requiredExecNetAmount);
 		} else {
-			IERC20(execToken_).safeTransferFrom(_taker, _maker, _requiredExecNetAmount);
+			IERC20(_execToken).safeTransferFrom(_taker, _maker, _requiredExecNetAmount);
 		}
-		emit Trade(bookToken_, execToken_, _orderId, _requiredBookAmount, _requiredExecNetAmount, _requiredExecFeeAmount, _maker, _taker);
+		emit Trade(_bookToken, _execToken, _orderId, _requiredBookAmount, _requiredExecNetAmount, _requiredExecFeeAmount, _maker, _taker);
+		return _requiredExecFeeAmount;
 	}
 
 	function cancelOrder(address _bookToken, address _execToken, uint256 _bookAmount, uint256 _execAmount, uint256 _salt) external
