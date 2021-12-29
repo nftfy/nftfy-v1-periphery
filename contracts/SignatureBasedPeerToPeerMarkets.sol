@@ -15,10 +15,14 @@ contract SignatureBasedPeerToPeerMarkets is ReentrancyGuard
 	using Address for address payable;
 	using ECDSA for bytes32;
 
+	bytes32 constant TYPEHASH = keccak256("Order(address,address,uint256,uint256,address,uint256)");
+
 	mapping (bytes32 => uint256) public executedBookAmounts;
 
 	uint256 public immutable fee;
 	address payable public immutable vault;
+
+	uint256 private immutable chainId_;
 
 	// parameter variables of _executeOrder, avoids stack too deep error, protected by reentrancy guard
 	address private bookToken_;
@@ -31,11 +35,12 @@ contract SignatureBasedPeerToPeerMarkets is ReentrancyGuard
 		require(_vault != address(0), "invalid address");
 		fee = _fee;
 		vault = _vault;
+		chainId_ = _chainId();
 	}
 
 	function generateOrderId(address _bookToken, address _execToken, uint256 _bookAmount, uint256 _execAmount, address payable _maker, uint256 _salt) public view returns (bytes32 _orderId)
 	{
-		return keccak256(abi.encodePacked(_chainId(), address(this), _bookToken, _execToken, _bookAmount, _execAmount, _maker, _salt));
+		return keccak256(abi.encodePacked(TYPEHASH, chainId_, address(this), _bookToken, _execToken, _bookAmount, _execAmount, _maker, _salt));
 	}
 
 	function checkOrderExecution(address _bookToken, address _execToken, uint256 _bookAmount, uint256 _execAmount, address payable _maker, uint256 _salt, uint256 _requiredBookAmount) external view returns (uint256 _totalExecAmount)
@@ -68,15 +73,16 @@ contract SignatureBasedPeerToPeerMarkets is ReentrancyGuard
 	{
 		if (_requiredBookAmount == 0) return 0;
 		bytes32 _orderId = generateOrderId(_bookToken, _execToken, _bookAmount, _execAmount, _maker, _salt);
-		if (executedBookAmounts[_orderId] >= _bookAmount) return 0;
-		uint256 _availableBookAmount = _bookAmount - executedBookAmounts[_orderId];
+		uint256 _executedBookAmount = executedBookAmounts[_orderId];
+		if (_executedBookAmount >= _bookAmount) return 0;
+		uint256 _availableBookAmount = _bookAmount - _executedBookAmount;
 		if (_requiredBookAmount == uint256(-1)) {
 			_requiredBookAmount = _availableBookAmount;
 		} else {
 			if (_requiredBookAmount > _availableBookAmount) return 0;
 		}
-		if (_requiredBookAmount > IERC20(_bookToken).allowance(_maker, address(this))) return 0;
 		if (_requiredBookAmount > IERC20(_bookToken).balanceOf(_maker)) return 0;
+		if (_requiredBookAmount > IERC20(_bookToken).allowance(_maker, address(this))) return 0;
 		_requiredExecAmount = _requiredBookAmount.mul(_execAmount).add(_bookAmount - 1) / _bookAmount;
 		return _requiredExecAmount;
 	}
