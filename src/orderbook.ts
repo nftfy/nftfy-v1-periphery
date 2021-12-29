@@ -12,7 +12,7 @@ export type SendOptions = {
   callback?: (error: Error, tx: string) => void;
 };
 
-export const ADDRESS = '0x9e2873c1c89696987F671861901A06Ad7Cb97f8C';
+export const ADDRESS = '0xb563Cf8AEC51AD5bc5c23b17C7677Faad5E7a2BF';
 
 const ABI: AbiItem[] = [
   {
