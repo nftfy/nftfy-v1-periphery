@@ -52,6 +52,16 @@ Ethereum:
 | SignatureBasedPeerToPeerMarkets | goerli (5)   | [0xb563Cf8AEC51AD5bc5c23b17C7677Faad5E7a2BF](https://goerli.etherscan.io/address/0xb563Cf8AEC51AD5bc5c23b17C7677Faad5E7a2BF) |
 | TestTokenFactory                | goerli (5)   | [0x4A4210BfD926174B96FfC39085461B7d8DaB2fBA](https://goerli.etherscan.io/address/0x4A4210BfD926174B96FfC39085461B7d8DaB2fBA) |
 
+Avalanche:
+
+| Contract                        | Network (ID)     | Address                                                                                                               |
+| ------------------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------- |
+| SignatureBasedPeerToPeerMarkets | avaxmain (43114) | [0xb563Cf8AEC51AD5bc5c23b17C7677Faad5E7a2BF](https://snowtrace.io/address/0xb563Cf8AEC51AD5bc5c23b17C7677Faad5E7a2BF) |
+
+| Contract                        | Network (ID)     | Address                                                                                                                       |
+| ------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| SignatureBasedPeerToPeerMarkets | avaxtest (43113) | [0xb563Cf8AEC51AD5bc5c23b17C7677Faad5E7a2BF](https://testnet.snowtrace.io/address/0xb563Cf8AEC51AD5bc5c23b17C7677Faad5E7a2BF) |
+
 Binance Smart Chain:
 
 | Contract                        | Network (ID) | Address                                                                                                              |
@@ -70,6 +80,16 @@ Binance Smart Chain:
 | PeerToPeerMarkets               | bsctest (97) | [0x91FE09bB4D060abc2FD1460f87D19c4c9410448e](https://testnet.bscscan.com/address/0x91FE09bB4D060abc2FD1460f87D19c4c9410448e) |
 | SignatureBasedPeerToPeerMarkets | bsctest (97) | [0xb563Cf8AEC51AD5bc5c23b17C7677Faad5E7a2BF](https://testnet.bscscan.com/address/0xb563Cf8AEC51AD5bc5c23b17C7677Faad5E7a2BF) |
 | TestTokenFactory                | bsctest (97) | [0x4A4210BfD926174B96FfC39085461B7d8DaB2fBA](https://testnet.bscscan.com/address/0x4A4210BfD926174B96FfC39085461B7d8DaB2fBA) |
+
+Fantom Network:
+
+| Contract                        | Network (ID)   | Address                                                                                                              |
+| ------------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------- |
+| SignatureBasedPeerToPeerMarkets | ftmmain (250)  | [0xb563Cf8AEC51AD5bc5c23b17C7677Faad5E7a2BF](https://ftmscan.com/address/0xb563Cf8AEC51AD5bc5c23b17C7677Faad5E7a2BF) |
+
+| Contract                        | Network (ID)   | Address                                                                                                                      |
+| ------------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| SignatureBasedPeerToPeerMarkets | ftmtest (4002) | [0xb563Cf8AEC51AD5bc5c23b17C7677Faad5E7a2BF](https://testnet.ftmscan.com/address/0xb563Cf8AEC51AD5bc5c23b17C7677Faad5E7a2BF) |
 
 Polygon Matic:
 
