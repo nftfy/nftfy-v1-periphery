@@ -248,7 +248,7 @@ export async function cancelLimitOrder(web3: Web3, api: Api, orderId: string, op
 export async function prepareMarkerBuyOrderFromCost(web3: Web3, api: Api, baseToken: string, quoteToken: string, _cost: string): Promise<PreparedExecution | null> {
   const bookToken = baseToken;
   const execToken = quoteToken;
-  const execDecimals = await decimals(web3, execToken);
+  const execDecimals = execToken === '0x0000000000000000000000000000000000000000' ? 18 : await decimals(web3, execToken);
   const requiredExecAmount = _units(_cost, execDecimals);
   return await api.prepareExecution(bookToken, execToken, 2n ** 256n, requiredExecAmount);
 }
@@ -265,7 +265,7 @@ export async function prepareMarkerBuyOrderFromAmount(web3: Web3, api: Api, base
 export async function prepareMarkerSellOrderFromAmount(web3: Web3, api: Api, baseToken: string, quoteToken: string, _amount: string): Promise<PreparedExecution | null> {
   const bookToken = quoteToken;
   const execToken = baseToken;
-  const execDecimals = await decimals(web3, execToken);
+  const execDecimals = execToken === '0x0000000000000000000000000000000000000000' ? 18 : await decimals(web3, execToken);
   const requiredExecAmount = _units(_amount, execDecimals);
   return await api.prepareExecution(bookToken, execToken, 2n ** 256n, requiredExecAmount);
 }
