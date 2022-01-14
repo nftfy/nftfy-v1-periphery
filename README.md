@@ -61,6 +61,7 @@ Avalanche:
 | Contract                        | Network (ID)     | Address                                                                                                                       |
 | ------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | SignatureBasedPeerToPeerMarkets | avaxtest (43113) | [0xb563Cf8AEC51AD5bc5c23b17C7677Faad5E7a2BF](https://testnet.snowtrace.io/address/0xb563Cf8AEC51AD5bc5c23b17C7677Faad5E7a2BF) |
+| TestTokenFactory                | avaxtest (43113) | [0x4A4210BfD926174B96FfC39085461B7d8DaB2fBA](https://testnet.snowtrace.io/address/0x4A4210BfD926174B96FfC39085461B7d8DaB2fBA) |
 
 Binance Smart Chain:
 
