@@ -62,19 +62,38 @@ async function _filterTxId(event: PromiEvent<Contract>): Promise<string> {
   return txId;
 }
 
+async function _isContract(web3: Web3, token: string): Promise<boolean> {
+  return await web3.eth.getCode(token) !== '0x';
+}
+
 export async function decimals(web3: Web3, token: string): Promise<number> {
   const contract = new web3.eth.Contract(ABI, token);
-  return Number(await contract.methods.decimals().call());
+  try {
+    return Number(await contract.methods.decimals().call());
+  } catch (e) {
+    if (await _isContract(web3, token)) throw e;
+    return 18; // handles self-destruct
+  }
 }
 
 export async function balanceOf(web3: Web3, token: string, account: string): Promise<bigint> {
   const contract = new web3.eth.Contract(ABI, token);
-  return BigInt(await contract.methods.balanceOf(account).call());
+  try {
+    return BigInt(await contract.methods.balanceOf(account).call());
+  } catch (e) {
+    if (await _isContract(web3, token)) throw e;
+    return 0n; // handles self-destruct
+  }
 }
 
 export async function allowance(web3: Web3, token: string, account: string, spender: string): Promise<bigint> {
   const contract = new web3.eth.Contract(ABI, token);
-  return BigInt(await contract.methods.allowance(account, spender).call());
+  try {
+    return BigInt(await contract.methods.allowance(account, spender).call());
+  } catch (e) {
+    if (await _isContract(web3, token)) throw e;
+    return 0n; // handles self-destruct
+  }
 }
 
 export async function approve(web3: Web3, token: string, spender: string, amount: bigint, options: SendOptions = {}): Promise<string> {
