@@ -143,7 +143,7 @@ contract SignatureBasedPeerToPeerMarkets is ReentrancyGuard
 			uint256 _requiredExecAmount = _requiredBookAmount.mul(_execAmount).add(_bookAmount - 1) / _bookAmount;
 			_requiredExecFeeAmount = _requiredExecAmount.mul(fee) / 1e18;
 			_requiredExecNetAmount = _requiredExecAmount - _requiredExecFeeAmount;
-			executedBookAmounts[_orderId] = _executedBookAmount - _requiredBookAmount;
+			executedBookAmounts[_orderId] = _executedBookAmount + _requiredBookAmount;
 		}
 		IERC20(_bookToken).safeTransferFrom(_maker, _taker, _requiredBookAmount);
 		if (_execToken == address(0)) {
