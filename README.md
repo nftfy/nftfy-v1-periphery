@@ -91,6 +91,7 @@ Fantom Network:
 | Contract                        | Network (ID)   | Address                                                                                                                      |
 | ------------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | SignatureBasedPeerToPeerMarkets | ftmtest (4002) | [0xcda724130b20Bc21Cd99f98d3B90c1A834C21f47](https://testnet.ftmscan.com/address/0xcda724130b20Bc21Cd99f98d3B90c1A834C21f47) |
+| TestTokenFactory                | ftmtest (4002) | [0x4A4210BfD926174B96FfC39085461B7d8DaB2fBA](https://testnet.ftmscan.com/address/0x4A4210BfD926174B96FfC39085461B7d8DaB2fBA) |
 
 Polygon Matic:
 
