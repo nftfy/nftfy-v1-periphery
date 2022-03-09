@@ -67,7 +67,7 @@ Avalanche:
 | Boxes                           | avaxtest (43113) | [0xFc44f66D5D689cD9108c6577533E9572f53a50Bc](https://testnet.snowtrace.io/address/0xFc44f66D5D689cD9108c6577533E9572f53a50Bc) |
 | CollectionFactory               | avaxtest (43113) | N/A                                                                                                                           |
 | NftfyCollection                 | avaxtest (43113) | N/A                                                                                                                           |
-| PeerToPeerMarkets               | avaxtest (43113) | N/A                                                                                                                           |
+| PeerToPeerMarkets               | avaxtest (43113) | [0x91FE09bB4D060abc2FD1460f87D19c4c9410448e](https://testnet.snowtrace.io/address/0x91FE09bB4D060abc2FD1460f87D19c4c9410448e) |
 | SignatureBasedPeerToPeerMarkets | avaxtest (43113) | [0xcda724130b20Bc21Cd99f98d3B90c1A834C21f47](https://testnet.snowtrace.io/address/0xcda724130b20Bc21Cd99f98d3B90c1A834C21f47) |
 | TestTokenFactory                | avaxtest (43113) | [0x4A4210BfD926174B96FfC39085461B7d8DaB2fBA](https://testnet.snowtrace.io/address/0x4A4210BfD926174B96FfC39085461B7d8DaB2fBA) |
 
@@ -105,7 +105,7 @@ Fantom Network:
 | Boxes                           | ftmtest (4002) | [0xFc44f66D5D689cD9108c6577533E9572f53a50Bc](https://testnet.ftmscan.com/address/0xFc44f66D5D689cD9108c6577533E9572f53a50Bc) |
 | CollectionFactory               | ftmtest (4002) | N/A                                                                                                                          |
 | NftfyCollection                 | ftmtest (4002) | N/A                                                                                                                          |
-| PeerToPeerMarkets               | ftmtest (4002) | N/A                                                                                                                          |
+| PeerToPeerMarkets               | ftmtest (4002) | [0x91FE09bB4D060abc2FD1460f87D19c4c9410448e](https://testnet.ftmscan.com/address/0x91FE09bB4D060abc2FD1460f87D19c4c9410448e) |
 | SignatureBasedPeerToPeerMarkets | ftmtest (4002) | [0xcda724130b20Bc21Cd99f98d3B90c1A834C21f47](https://testnet.ftmscan.com/address/0xcda724130b20Bc21Cd99f98d3B90c1A834C21f47) |
 | TestTokenFactory                | ftmtest (4002) | [0x4A4210BfD926174B96FfC39085461B7d8DaB2fBA](https://testnet.ftmscan.com/address/0x4A4210BfD926174B96FfC39085461B7d8DaB2fBA) |
 
