@@ -285,7 +285,7 @@ export type ExecutionEstimate = {
   execFeeAmount: string;
 };
 
-export async function estimateMarketOrderExecution(web3: Web3, api: Api, prepared: PreparedExecution, options: SendOptions = {}): Promise<ExecutionEstimate> {
+export async function estimateMarketOrderExecution(web3: Web3, api: Api, prepared: PreparedExecution): Promise<ExecutionEstimate> {
   const { bookToken, execToken, bookAmounts, execAmounts, makers, salts, lastRequiredBookAmount } = prepared;
   const bookDecimals = await decimals(web3, bookToken);
   const execDecimals = execToken === '0x0000000000000000000000000000000000000000' ? 18 : await decimals(web3, execToken);
