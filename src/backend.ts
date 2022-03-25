@@ -2,7 +2,7 @@ import Web3 from 'web3';
 
 import { Order, PreparedExecution } from './types';
 import { Db } from './db';
-import { ADDRESS, executedBookAmounts, generateOrderId } from './orderbook';
+import { ADDRESS, executedBookAmounts, generateOrderId, onTrade, onCancelOrder } from './orderbook';
 import { balanceOf, allowance } from './token';
 
 function _recoverSigner(web3: Web3, hash: string, signature: string): string {
@@ -154,6 +154,9 @@ export function createApi(web3: Web3, db: Db): Api {
     const time = Date.now()
     return await _updateOrders(web3, db, orderIds, time);
   }
+
+  onTrade(web3, (orderId) => updateOrders([orderId]));
+  onCancelOrder(web3, (orderId) => updateOrders([orderId]));
 
   return {
     availableBalance,

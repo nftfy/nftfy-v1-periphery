@@ -1,6 +1,6 @@
 import Web3 from 'web3';
 import { PromiEvent } from 'web3-core';
-import { Contract } from 'web3-eth-contract';
+import { Contract, EventData } from 'web3-eth-contract';
 import { AbiItem } from 'web3-utils';
 
 export type SendOptions = {
@@ -131,6 +131,31 @@ const ABI: AbiItem[] = [
     stateMutability: 'nonpayable',
     outputs: [],
   },
+  {
+    type: 'event',
+    name: 'Trade',
+    inputs: [
+      { type: 'address', indexed: true, name: '_bookToken' },
+      { type: 'address', indexed: true, name: '_execToken' },
+      { type: 'bytes32', indexed: true, name: '_orderId' },
+      { type: 'uint256', indexed: false, name: '_bookAmount' },
+      { type: 'uint256', indexed: false, name: '_execAmount' },
+      { type: 'uint256', indexed: false, name: '_execFeeAmount' },
+      { type: 'address', indexed: false, name: '_maker' },
+      { type: 'address', indexed: false, name: '_taker' },
+    ],
+    anonymous: false,
+  },
+  {
+    type: 'event',
+    name: 'CancelOrder',
+    inputs: [
+      { type: 'address', indexed: true, name: '_bookToken' },
+      { type: 'address', indexed: true, name: '_execToken' },
+      { type: 'bytes32', indexed: true, name: '_orderId' },
+    ],
+    anonymous: false,
+  },
 ];
 
 async function _currentUser(web3: Web3): Promise<string> {
@@ -202,4 +227,22 @@ export async function cancelOrders(web3: Web3, bookToken: string, execToken: str
   if (typeof value === 'bigint') value = String(value);
   const contract = new web3.eth.Contract(ABI, ADDRESS);
   return await _filterTxId(contract.methods.cancelOrders(bookToken, execToken, bookAmounts, execAmounts, salts).send({ from, nonce, gas, gasPrice, value }, options.callback));
+}
+
+export function onTrade(web3: Web3, callback: (orderId: string) => void): void {
+  const constract = new web3.eth.Contract(ABI, ADDRESS);
+  constract.events.Trade({ fromBlock: 'latest' }, (error: unknown, event: EventData) => {
+    if (error) return;
+    const { _orderId: orderId } = event.returnValues;
+    callback(orderId);
+  });
+}
+
+export function onCancelOrder(web3: Web3, callback: (orderId: string) => void): void {
+  const constract = new web3.eth.Contract(ABI, ADDRESS);
+  constract.events.CancelOrder({ fromBlock: 'latest' }, (error: unknown, event: EventData) => {
+    if (error) return;
+    const { _orderId: orderId } = event.returnValues;
+    callback(orderId);
+  });
 }
