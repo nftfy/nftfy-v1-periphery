@@ -115,10 +115,20 @@ export interface Api {
 export function createApi(web3: Web3, db: Db): Api {
 
   async function availableBalance(bookToken: string, maker: string): Promise<bigint> {
+    const orders = await db.lookupUserOrders(maker);
+    for (const order of orders) {
+      if (order.freeBookAmount > 0n) continue;
+      await _updateOrders(web3, db, order.bookToken, order.execToken, order.startTime);
+    }
     return await _availableBalance(web3, db, bookToken, maker);
   }
 
   async function listOrders(maker: string): Promise<Order[]> {
+    const orders = await db.lookupUserOrders(maker);
+    for (const order of orders) {
+      if (order.freeBookAmount > 0n) continue;
+      await _updateOrders(web3, db, order.bookToken, order.execToken, order.startTime);
+    }
     return await db.lookupUserOrders(maker);
   }
 
@@ -139,11 +149,15 @@ export function createApi(web3: Web3, db: Db): Api {
   }
 
   async function lookupOrder(orderId: string): Promise<Order | null> {
+    const order = await db.lookupOrder(orderId);
+    if (order === null || order.freeBookAmount > 0n) return order;
+    await _updateOrders(web3, db, order.bookToken, order.execToken, order.startTime);
     return await db.lookupOrder(orderId);
   }
 
   async function lookupOrders(bookToken: string, execToken: string): Promise<Order[]> {
     const time = Date.now()
+    await _updateOrders(web3, db, bookToken, execToken, time);
     return await db.lookupOrders(bookToken, execToken, time);
   }
 
