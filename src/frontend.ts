@@ -236,12 +236,12 @@ export async function cancelLimitOrder(web3: Web3, api: Api, orderId: string, op
   if (order.maker !== maker) throw new Error('Invalid order: ' + orderId);
   const executedBookAmount = await executedBookAmounts(web3, orderId);
   const time = Date.now();
-  await api.invalidateOrders([orderId]);
   let txId: string | null = null;
   if (executedBookAmount < order.bookAmount && order.endTime > time) {
     const { bookToken, execToken, bookAmount, execAmount, salt } = order;
     txId = await cancelOrder(web3, bookToken, execToken, bookAmount, execAmount, salt, options);
   }
+  await api.updateOrders([orderId]);
   return txId;
 }
 
@@ -302,7 +302,6 @@ export async function estimateMarketOrderExecution(web3: Web3, api: Api, prepare
 
 export async function executeMarketOrder(web3: Web3, api: Api, prepared: PreparedExecution, options: SendOptions = {}): Promise<string> {
   const { bookToken, execToken, orderIds, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount } = prepared;
-  await api.invalidateOrders(orderIds);
   let txId: string;
   if (makers.length === 1) {
     const bookAmount = bookAmounts[0] || 0n;
@@ -322,5 +321,6 @@ export async function executeMarketOrder(web3: Web3, api: Api, prepared: Prepare
     const value = execToken === '0x0000000000000000000000000000000000000000' ? requiredExecAmount : 0n;
     txId = await executeOrders(web3, bookToken, execToken, bookAmounts, execAmounts, makers, salts, signatures, lastRequiredBookAmount, { value, ...options });
   }
+  await api.updateOrders(orderIds);
   return txId;
 }
