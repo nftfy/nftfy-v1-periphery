@@ -44,13 +44,21 @@ async function _availableBalance(web3: Web3, db: Db, bookToken: string, maker: s
   return free >= used ? free - used : -1n;
 }
 
-async function _updateOrders(web3: Web3, db: Db, orderIds: string[], time: number): Promise<void> {
+async function _fetchOrders(web3: Web3, db: Db, orderIds: string[]): Promise<Order[]> {
   const orders: Order[] = [];
   for (const orderId of orderIds) {
     const order = await db.lookupOrder(orderId);
     if (order === null) throw new Error('Invalid orderId: ' + orderId);
     orders.push(order);
   }
+  return orders;
+}
+
+async function _isContract(web3: Web3, token: string): Promise<boolean> {
+  return await web3.eth.getCode(token) !== '0x';
+}
+
+async function _updateOrders(web3: Web3, db: Db, orders: Order[], time: number): Promise<void> {
   for (const order of orders) {
     const executedBookAmount = await executedBookAmounts(web3, order.orderId);
     if (executedBookAmount >= order.bookAmount || time >= order.endTime) {
@@ -59,6 +67,12 @@ async function _updateOrders(web3: Web3, db: Db, orderIds: string[], time: numbe
       const freeBookAmount = order.bookAmount - executedBookAmount;
       await db.updateOrder(order.orderId, freeBookAmount);
     }
+  }
+}
+
+async function _removeOrders(web3: Web3, db: Db, orders: Order[]): Promise<void> {
+  for (const order of orders) {
+    await db.removeOrder(order.orderId);
   }
 }
 
@@ -108,6 +122,7 @@ export interface Api {
   lookupOrders(bookToken: string, execToken: string): Promise<Order[]>;
   prepareExecution(bookToken: string, execToken: string, requiredBookAmount: bigint, requiredExecAmount: bigint): Promise<PreparedExecution | null>;
   updateOrders(orderIds: string[]): Promise<void>;
+  refreshOrders(bookToken: string, execToken: string): Promise<void>;
 }
 
 export function createApi(web3: Web3, db: Db): Api {
@@ -141,18 +156,29 @@ export function createApi(web3: Web3, db: Db): Api {
   }
 
   async function lookupOrders(bookToken: string, execToken: string): Promise<Order[]> {
-    const time = Date.now()
+    const time = Date.now();
     return await db.lookupOrders(bookToken, execToken, time);
   }
 
   async function prepareExecution(bookToken: string, execToken: string, requiredBookAmount: bigint, requiredExecAmount: bigint): Promise<PreparedExecution | null> {
-    const time = Date.now()
+    const time = Date.now();
     return await _prepareExecution(web3, db, bookToken, execToken, requiredBookAmount, requiredExecAmount, time);
   }
 
   async function updateOrders(orderIds: string[]): Promise<void> {
-    const time = Date.now()
-    return await _updateOrders(web3, db, orderIds, time);
+    const time = Date.now();
+    const orders = await _fetchOrders(web3, db, orderIds);
+    await _updateOrders(web3, db, orders, time);
+  }
+
+  async function refreshOrders(bookToken: string, execToken: string): Promise<void> {
+    const time = Date.now();
+    const orders = await db.lookupOrders(bookToken, execToken, time);
+    if (await _isContract(web3, execToken)) {
+      await _updateOrders(web3, db, orders, time);
+    } else {
+      await _removeOrders(web3, db, orders);
+    }
   }
 
   return {
@@ -163,5 +189,6 @@ export function createApi(web3: Web3, db: Db): Api {
     lookupOrders,
     prepareExecution,
     updateOrders,
+    refreshOrders,
   };
 }

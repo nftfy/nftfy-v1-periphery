@@ -175,6 +175,16 @@ export async function getOrderbook(web3: Web3, api: Api, baseToken: string, quot
   return { asks, bids, askSummary, bidSummary };
 }
 
+
+export async function refreshOrderbook(web3: Web3, api: Api, baseToken: string, quoteToken: string): Promise<void> {
+  if (baseToken !== '0x0000000000000000000000000000000000000000') {
+    await api.refreshOrders(baseToken, quoteToken);
+  }
+  if (quoteToken !== '0x0000000000000000000000000000000000000000') {
+    await api.refreshOrders(quoteToken, baseToken);
+  }
+}
+
 export async function createLimitBuyOrder(web3: Web3, api: Api, baseToken: string, quoteToken: string, _amount: string, _cost: string, duration = DEFAULT_ORDER_DURATION): Promise<string> {
   const bookToken = quoteToken;
   const execToken = baseToken;
