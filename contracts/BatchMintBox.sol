@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.6.0;
 
+import { ERC721Holder } from "@openzeppelin/contracts/token/ERC721/ERC721Holder.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import { Boxes, SafeERC721 } from "./Boxes.sol";
 
-contract BatchMintBox is ReentrancyGuard
+contract BatchMintBox is ReentrancyGuard, ERC721Holder
 {
 	using SafeERC721 for IERC721;
 
