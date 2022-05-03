@@ -134,6 +134,8 @@ const ABI: AbiItem[] = [
 ];
 
 async function _currentUser(web3: Web3): Promise<string> {
+  const wallet = web3.eth.accounts.wallet[0];
+  if (wallet !== undefined) return wallet.address;
   const [address] = await web3.eth.getAccounts();
   if (address === undefined) throw new Error('No account set');
   return address;
@@ -176,7 +178,11 @@ export async function executeOrder(web3: Web3, bookToken: string, execToken: str
   if (typeof gasPrice === 'bigint') gasPrice = String(gasPrice);
   if (typeof value === 'bigint') value = String(value);
   const contract = new web3.eth.Contract(ABI, ADDRESS);
-  return await _filterTxId(contract.methods.executeOrder(bookToken, execToken, bookAmount, execAmount, maker, salt, signature, requiredBookAmount).send({ from, nonce, gas, gasPrice, value }, options.callback));
+  if (options.callback === undefined) {
+    return await _filterTxId(contract.methods.executeOrder(bookToken, execToken, bookAmount, execAmount, maker, salt, signature, requiredBookAmount).send({ from, nonce, gas, gasPrice, value }));
+  } else {
+    return await _filterTxId(contract.methods.executeOrder(bookToken, execToken, bookAmount, execAmount, maker, salt, signature, requiredBookAmount).send({ from, nonce, gas, gasPrice, value }, options.callback));
+  }
 }
 
 export async function executeOrders(web3: Web3, bookToken: string, execToken: string, bookAmounts: bigint[], execAmounts: bigint[], makers: string[], salts: bigint[], signatures: string[], lastRequiredBookAmount: bigint, options: SendOptions = {}): Promise<string> {
@@ -185,7 +191,11 @@ export async function executeOrders(web3: Web3, bookToken: string, execToken: st
   if (typeof value === 'bigint') value = String(value);
   const contract = new web3.eth.Contract(ABI, ADDRESS);
   const siglist = '0x' + signatures.map((signature) => signature.substr(2)).join('');
-  return await _filterTxId(contract.methods.executeOrders(bookToken, execToken, bookAmounts, execAmounts, makers, salts, siglist, lastRequiredBookAmount).send({ from, nonce, gas, gasPrice, value }, options.callback));
+  if (options.callback === undefined) {
+    return await _filterTxId(contract.methods.executeOrders(bookToken, execToken, bookAmounts, execAmounts, makers, salts, siglist, lastRequiredBookAmount).send({ from, nonce, gas, gasPrice, value }));
+  } else {
+    return await _filterTxId(contract.methods.executeOrders(bookToken, execToken, bookAmounts, execAmounts, makers, salts, siglist, lastRequiredBookAmount).send({ from, nonce, gas, gasPrice, value }, options.callback));
+  }
 }
 
 export async function cancelOrder(web3: Web3, bookToken: string, execToken: string, bookAmount: bigint, execAmount: bigint, salt: bigint, options: SendOptions = {}): Promise<string> {
@@ -193,7 +203,11 @@ export async function cancelOrder(web3: Web3, bookToken: string, execToken: stri
   if (typeof gasPrice === 'bigint') gasPrice = String(gasPrice);
   if (typeof value === 'bigint') value = String(value);
   const contract = new web3.eth.Contract(ABI, ADDRESS);
-  return await _filterTxId(contract.methods.cancelOrder(bookToken, execToken, bookAmount, execAmount, salt).send({ from, nonce, gas, gasPrice, value }, options.callback));
+  if (options.callback === undefined) {
+    return await _filterTxId(contract.methods.cancelOrder(bookToken, execToken, bookAmount, execAmount, salt).send({ from, nonce, gas, gasPrice, value }));
+  } else {
+    return await _filterTxId(contract.methods.cancelOrder(bookToken, execToken, bookAmount, execAmount, salt).send({ from, nonce, gas, gasPrice, value }, options.callback));
+  }
 }
 
 export async function cancelOrders(web3: Web3, bookToken: string, execToken: string, bookAmounts: bigint[], execAmounts: bigint[], salts: bigint[], options: SendOptions = {}): Promise<string> {
@@ -201,5 +215,9 @@ export async function cancelOrders(web3: Web3, bookToken: string, execToken: str
   if (typeof gasPrice === 'bigint') gasPrice = String(gasPrice);
   if (typeof value === 'bigint') value = String(value);
   const contract = new web3.eth.Contract(ABI, ADDRESS);
-  return await _filterTxId(contract.methods.cancelOrders(bookToken, execToken, bookAmounts, execAmounts, salts).send({ from, nonce, gas, gasPrice, value }, options.callback));
+  if (options.callback === undefined) {
+    return await _filterTxId(contract.methods.cancelOrders(bookToken, execToken, bookAmounts, execAmounts, salts).send({ from, nonce, gas, gasPrice, value }));
+  } else {
+    return await _filterTxId(contract.methods.cancelOrders(bookToken, execToken, bookAmounts, execAmounts, salts).send({ from, nonce, gas, gasPrice, value }, options.callback));
+  }
 }

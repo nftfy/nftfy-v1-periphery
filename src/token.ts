@@ -50,6 +50,8 @@ const ABI: AbiItem[] = [
 ];
 
 async function _currentUser(web3: Web3): Promise<string> {
+  const wallet = web3.eth.accounts.wallet[0];
+  if (wallet !== undefined) return wallet.address;
   const [address] = await web3.eth.getAccounts();
   if (address === undefined) throw new Error('No account set');
   return address;
@@ -101,5 +103,9 @@ export async function approve(web3: Web3, token: string, spender: string, amount
   if (typeof gasPrice === 'bigint') gasPrice = String(gasPrice);
   if (typeof value === 'bigint') value = String(value);
   const contract = new web3.eth.Contract(ABI, token);
-  return await _filterTxId(contract.methods.approve(spender, amount).send({ from, nonce, gas, gasPrice, value }, options.callback));
+  if (options.callback === undefined) {
+    return await _filterTxId(contract.methods.approve(spender, amount).send({ from, nonce, gas, gasPrice, value }));
+  } else {
+    return await _filterTxId(contract.methods.approve(spender, amount).send({ from, nonce, gas, gasPrice, value }, options.callback));
+  }
 }
