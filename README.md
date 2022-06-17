@@ -11,6 +11,7 @@ Ethereum:
 | Contract                        | Network (ID) | Address                                                                                                               |
 | ------------------------------- | ------------ | --------------------------------------------------------------------------------------------------------------------- |
 | Boxes                           | mainnet (1)  | [0xFc44f66D5D689cD9108c6577533E9572f53a50Bc](https://etherscan.io/address/0xFc44f66D5D689cD9108c6577533E9572f53a50Bc) |
+| BatchMintBox                    | mainnet (1)  | [0xbbFfeF9d52F252CA60feFBcB73d7145dECee1804](https://etherscan.io/address/0xbbFfeF9d52F252CA60feFBcB73d7145dECee1804) |
 | CollectionFactory               | mainnet (1)  | [0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F](https://etherscan.io/address/0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F) |
 | NftfyCollection                 | mainnet (1)  | [0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb](https://etherscan.io/address/0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb) |
 | PeerToPeerMarkets               | mainnet (1)  | [0x91FE09bB4D060abc2FD1460f87D19c4c9410448e](https://etherscan.io/address/0x91FE09bB4D060abc2FD1460f87D19c4c9410448e) |
@@ -19,6 +20,7 @@ Ethereum:
 | Contract                        | Network (ID) | Address                                                                                                                       |
 | ------------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------- |
 | Boxes                           | ropsten (3)  | [0xFc44f66D5D689cD9108c6577533E9572f53a50Bc](https://ropsten.etherscan.io/address/0xFc44f66D5D689cD9108c6577533E9572f53a50Bc) |
+| BatchMintBox                    | ropsten (3)  | [0xbbFfeF9d52F252CA60feFBcB73d7145dECee1804](https://ropsten.etherscan.io/address/0xbbFfeF9d52F252CA60feFBcB73d7145dECee1804) |
 | CollectionFactory               | ropsten (3)  | [0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F](https://ropsten.etherscan.io/address/0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F) |
 | NftfyCollection                 | ropsten (3)  | [0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb](https://ropsten.etherscan.io/address/0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb) |
 | PeerToPeerMarkets               | ropsten (3)  | [0x91FE09bB4D060abc2FD1460f87D19c4c9410448e](https://ropsten.etherscan.io/address/0x91FE09bB4D060abc2FD1460f87D19c4c9410448e) |
@@ -28,6 +30,7 @@ Ethereum:
 | Contract                        | Network (ID) | Address                                                                                                                       |
 | ------------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------- |
 | Boxes                           | rinkeby (4)  | [0xFc44f66D5D689cD9108c6577533E9572f53a50Bc](https://rinkeby.etherscan.io/address/0xFc44f66D5D689cD9108c6577533E9572f53a50Bc) |
+| BatchMintBox                    | rinkeby (4)  | [0xbbFfeF9d52F252CA60feFBcB73d7145dECee1804](https://rinkeby.etherscan.io/address/0xbbFfeF9d52F252CA60feFBcB73d7145dECee1804) |
 | CollectionFactory               | rinkeby (4)  | [0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F](https://rinkeby.etherscan.io/address/0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F) |
 | NftfyCollection                 | rinkeby (4)  | [0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb](https://rinkeby.etherscan.io/address/0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb) |
 | PeerToPeerMarkets               | rinkeby (4)  | [0x91FE09bB4D060abc2FD1460f87D19c4c9410448e](https://rinkeby.etherscan.io/address/0x91FE09bB4D060abc2FD1460f87D19c4c9410448e) |
@@ -37,6 +40,7 @@ Ethereum:
 | Contract                        | Network (ID) | Address                                                                                                                     |
 | ------------------------------- | ------------ | --------------------------------------------------------------------------------------------------------------------------- |
 | Boxes                           | kovan (42)   | [0xFc44f66D5D689cD9108c6577533E9572f53a50Bc](https://kovan.etherscan.io/address/0xFc44f66D5D689cD9108c6577533E9572f53a50Bc) |
+| BatchMintBox                    | kovan (42)   | [0xbbFfeF9d52F252CA60feFBcB73d7145dECee1804](https://kovan.etherscan.io/address/0xbbFfeF9d52F252CA60feFBcB73d7145dECee1804) |
 | CollectionFactory               | kovan (42)   | [0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F](https://kovan.etherscan.io/address/0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F) |
 | NftfyCollection                 | kovan (42)   | [0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb](https://kovan.etherscan.io/address/0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb) |
 | PeerToPeerMarkets               | kovan (42)   | [0x91FE09bB4D060abc2FD1460f87D19c4c9410448e](https://kovan.etherscan.io/address/0x91FE09bB4D060abc2FD1460f87D19c4c9410448e) |
@@ -46,6 +50,7 @@ Ethereum:
 | Contract                        | Network (ID) | Address                                                                                                                      |
 | ------------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------- |
 | Boxes                           | goerli (5)   | [0xFc44f66D5D689cD9108c6577533E9572f53a50Bc](https://goerli.etherscan.io/address/0xFc44f66D5D689cD9108c6577533E9572f53a50Bc) |
+| BatchMintBox                    | goerli (5)   | [0xbbFfeF9d52F252CA60feFBcB73d7145dECee1804](https://goerli.etherscan.io/address/0xbbFfeF9d52F252CA60feFBcB73d7145dECee1804) |
 | CollectionFactory               | goerli (5)   | [0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F](https://goerli.etherscan.io/address/0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F) |
 | NftfyCollection                 | goerli (5)   | [0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb](https://goerli.etherscan.io/address/0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb) |
 | PeerToPeerMarkets               | goerli (5)   | [0x91FE09bB4D060abc2FD1460f87D19c4c9410448e](https://goerli.etherscan.io/address/0x91FE09bB4D060abc2FD1460f87D19c4c9410448e) |
@@ -57,6 +62,7 @@ Avalanche:
 | Contract                        | Network (ID)     | Address                                                                                                               |
 | ------------------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------- |
 | Boxes                           | avaxmain (43114) | [0xFc44f66D5D689cD9108c6577533E9572f53a50Bc](https://snowtrace.io/address/0xFc44f66D5D689cD9108c6577533E9572f53a50Bc) |
+| BatchMintBox                    | avaxmain (43114) | [0xbbFfeF9d52F252CA60feFBcB73d7145dECee1804](https://snowtrace.io/address/0xbbFfeF9d52F252CA60feFBcB73d7145dECee1804) |
 | CollectionFactory               | avaxmain (43114) | N/A                                                                                                                   |
 | NftfyCollection                 | avaxmain (43114) | N/A                                                                                                                   |
 | PeerToPeerMarkets               | avaxmain (43114) | N/A                                                                                                                   |
@@ -65,6 +71,7 @@ Avalanche:
 | Contract                        | Network (ID)     | Address                                                                                                                       |
 | ------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | Boxes                           | avaxtest (43113) | [0xFc44f66D5D689cD9108c6577533E9572f53a50Bc](https://testnet.snowtrace.io/address/0xFc44f66D5D689cD9108c6577533E9572f53a50Bc) |
+| BatchMintBox                    | avaxtest (43113) | [0xbbFfeF9d52F252CA60feFBcB73d7145dECee1804](https://testnet.snowtrace.io/address/0xbbFfeF9d52F252CA60feFBcB73d7145dECee1804) |
 | CollectionFactory               | avaxtest (43113) | N/A                                                                                                                           |
 | NftfyCollection                 | avaxtest (43113) | N/A                                                                                                                           |
 | PeerToPeerMarkets               | avaxtest (43113) | [0x91FE09bB4D060abc2FD1460f87D19c4c9410448e](https://testnet.snowtrace.io/address/0x91FE09bB4D060abc2FD1460f87D19c4c9410448e) |
@@ -76,6 +83,7 @@ Binance Smart Chain:
 | Contract                        | Network (ID) | Address                                                                                                              |
 | ------------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------- |
 | Boxes                           | bscmain (56) | [0xFc44f66D5D689cD9108c6577533E9572f53a50Bc](https://bscscan.com/address/0xFc44f66D5D689cD9108c6577533E9572f53a50Bc) |
+| BatchMintBox                    | bscmain (56) | [0xbbFfeF9d52F252CA60feFBcB73d7145dECee1804](https://bscscan.com/address/0xbbFfeF9d52F252CA60feFBcB73d7145dECee1804) |
 | CollectionFactory               | bscmain (56) | [0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F](https://bscscan.com/address/0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F) |
 | NftfyCollection                 | bscmain (56) | [0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb](https://bscscan.com/address/0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb) |
 | PeerToPeerMarkets               | bscmain (56) | [0x91FE09bB4D060abc2FD1460f87D19c4c9410448e](https://bscscan.com/address/0x91FE09bB4D060abc2FD1460f87D19c4c9410448e) |
@@ -84,6 +92,7 @@ Binance Smart Chain:
 | Contract                        | Network (ID) | Address                                                                                                                      |
 | ------------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------- |
 | Boxes                           | bsctest (97) | [0xFc44f66D5D689cD9108c6577533E9572f53a50Bc](https://testnet.bscscan.com/address/0xFc44f66D5D689cD9108c6577533E9572f53a50Bc) |
+| BatchMintBox                    | bsctest (97) | [0xbbFfeF9d52F252CA60feFBcB73d7145dECee1804](https://testnet.bscscan.com/address/0xbbFfeF9d52F252CA60feFBcB73d7145dECee1804) |
 | CollectionFactory               | bsctest (97) | [0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F](https://testnet.bscscan.com/address/0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F) |
 | NftfyCollection                 | bsctest (97) | [0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb](https://testnet.bscscan.com/address/0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb) |
 | PeerToPeerMarkets               | bsctest (97) | [0x91FE09bB4D060abc2FD1460f87D19c4c9410448e](https://testnet.bscscan.com/address/0x91FE09bB4D060abc2FD1460f87D19c4c9410448e) |
@@ -95,6 +104,7 @@ Fantom Network:
 | Contract                        | Network (ID)   | Address                                                                                                              |
 | ------------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------- |
 | Boxes                           | ftmmain (250)  | [0xFc44f66D5D689cD9108c6577533E9572f53a50Bc](https://ftmscan.com/address/0xFc44f66D5D689cD9108c6577533E9572f53a50Bc) |
+| BatchMintBox                    | ftmmain (250)  | [0xbbFfeF9d52F252CA60feFBcB73d7145dECee1804](https://ftmscan.com/address/0xbbFfeF9d52F252CA60feFBcB73d7145dECee1804) |
 | CollectionFactory               | ftmmain (250)  | N/A                                                                                                                  |
 | NftfyCollection                 | ftmmain (250)  | N/A                                                                                                                  |
 | PeerToPeerMarkets               | ftmmain (250)  | N/A                                                                                                                  |
@@ -103,6 +113,7 @@ Fantom Network:
 | Contract                        | Network (ID)   | Address                                                                                                                      |
 | ------------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | Boxes                           | ftmtest (4002) | [0xFc44f66D5D689cD9108c6577533E9572f53a50Bc](https://testnet.ftmscan.com/address/0xFc44f66D5D689cD9108c6577533E9572f53a50Bc) |
+| BatchMintBox                    | ftmtest (4002) | [0xbbFfeF9d52F252CA60feFBcB73d7145dECee1804](https://testnet.ftmscan.com/address/0xbbFfeF9d52F252CA60feFBcB73d7145dECee1804) |
 | CollectionFactory               | ftmtest (4002) | N/A                                                                                                                          |
 | NftfyCollection                 | ftmtest (4002) | N/A                                                                                                                          |
 | PeerToPeerMarkets               | ftmtest (4002) | [0x91FE09bB4D060abc2FD1460f87D19c4c9410448e](https://testnet.ftmscan.com/address/0x91FE09bB4D060abc2FD1460f87D19c4c9410448e) |
@@ -114,6 +125,7 @@ Polygon Matic:
 | Contract                        | Network (ID)    | Address                                                                                                                  |
 | ------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | Boxes                           | maticmain (137) | [0xFc44f66D5D689cD9108c6577533E9572f53a50Bc](https://polygonscan.com/address/0xFc44f66D5D689cD9108c6577533E9572f53a50Bc) |
+| BatchMintBox                    | maticmain (137) | [0xbbFfeF9d52F252CA60feFBcB73d7145dECee1804](https://polygonscan.com/address/0xbbFfeF9d52F252CA60feFBcB73d7145dECee1804) |
 | CollectionFactory               | maticmain (137) | [0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F](https://polygonscan.com/address/0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F) |
 | NftfyCollection                 | maticmain (137) | [0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb](https://polygonscan.com/address/0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb) |
 | PeerToPeerMarkets               | maticmain (137) | [0x91FE09bB4D060abc2FD1460f87D19c4c9410448e](https://polygonscan.com/address/0x91FE09bB4D060abc2FD1460f87D19c4c9410448e) |
@@ -122,6 +134,7 @@ Polygon Matic:
 | Contract                        | Network (ID)      | Address                                                                                                                         |
 | ------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | Boxes                           | matictest (80001) | [0xFc44f66D5D689cD9108c6577533E9572f53a50Bc](https://mumbai.polygonscan.com/address/0xFc44f66D5D689cD9108c6577533E9572f53a50Bc) |
+| BatchMintBox                    | matictest (80001) | [0xbbFfeF9d52F252CA60feFBcB73d7145dECee1804](https://mumbai.polygonscan.com/address/0xbbFfeF9d52F252CA60feFBcB73d7145dECee1804) |
 | CollectionFactory               | matictest (80001) | [0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F](https://mumbai.polygonscan.com/address/0x62cF87B0E441e6E3A1634304AbA6332F3Fd6464F) |
 | NftfyCollection                 | matictest (80001) | [0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb](https://mumbai.polygonscan.com/address/0x9c8a2b35B268bf2AA69f5fc105514e34daF3cEBb) |
 | PeerToPeerMarkets               | matictest (80001) | [0x91FE09bB4D060abc2FD1460f87D19c4c9410448e](https://mumbai.polygonscan.com/address/0x91FE09bB4D060abc2FD1460f87D19c4c9410448e) |
