@@ -18,7 +18,7 @@ contract BatchMintBox is ReentrancyGuard, ERC721Holder
 		boxes = _boxes;
 	}
 
-	function mint(string memory _cid, address[] memory _tokens, uint256[] memory _tokenIds) external returns (uint256 _boxId)
+	function mint(string memory _cid, address[] memory _tokens, uint256[] memory _tokenIds) external nonReentrant returns (uint256 _boxId)
 	{
 		_boxId = Boxes(boxes).baseIndex() + Boxes(boxes).totalSupply();
 		Boxes(boxes).mint(_cid, address(this));
